@@ -1,0 +1,179 @@
+---
+import SectionHeader from "./ui/SectionHeader.astro";
+
+interface Trophy {
+  id: string;
+  date: string;
+  dateShort: string;
+  event: string;
+  where: string;
+  track: string;
+  place: number;
+  summary: string;
+  prize: { cash: number; extras: string };
+}
+
+interface Props {
+  trophies: Trophy[];
+  winRate?: number;
+  limit?: number;
+}
+
+const { trophies, winRate, limit = 6 } = Astro.props;
+
+const wins = trophies
+  .filter((t) => t.place === 1)
+  .sort((a, b) => (a.date < b.date ? 1 : -1))
+  .slice(0, limit);
+
+const totalPrize = wins.reduce((sum, t) => sum + (t.prize?.cash ?? 0), 0);
+const fmtCash = (n: number) =>
+  n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
+const fmtCashFull = (n: number) =>
+  `$${n.toLocaleString("en-US")}`;
+
+const winRateLabel =
+  typeof winRate === "number" ? `${Math.round(winRate * 100)}%` : "—";
+const meta = `TOTAL PRIZE: ${fmtCashFull(totalPrize)}<br/>WIN RATE: ${winRateLabel}`;
+---
+
+<section class="sec" id="trophies" aria-labelledby="trophies-heading">
+  <div class="wrap">
+    <SectionHeader
+      num="01"
+      kicker="TROPHY CASE"
+      title="Six wins.<br/>No moral victories."
+      meta={meta}
+      id="trophies-heading"
+    />
+
+    <div class="trophy-grid">
+      {
+        wins.map((t) => (
+          <article class="trophy">
+            <div class="t-date font-mono">{t.dateShort}</div>
+            <div class="t-body">
+              <h3>{t.event}</h3>
+              <div class="where font-mono">{t.where} · {t.track}</div>
+              <p>{t.summary}</p>
+              <div class="t-prize font-mono">
+                ↳ {fmtCash(t.prize.cash)} + {t.prize.extras}
+              </div>
+            </div>
+            <div class="t-tag font-mono upper">★ 1ST</div>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .sec {
+    padding: 72px 0;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .trophy-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 0;
+    border-top: 1.5px solid var(--ink);
+  }
+
+  .trophy {
+    grid-column: span 6;
+    border-bottom: 1.5px solid var(--ink);
+    border-right: 1.5px solid var(--ink);
+    padding: 28px 24px 24px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 20px;
+    align-items: start;
+    transition: background var(--dur-normal) ease;
+  }
+
+  /* Right column has no right border */
+  .trophy:nth-child(2n) {
+    border-right: none;
+  }
+
+  /* Bottom row has no bottom border (assume even count of cards) */
+  .trophy:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+
+  .trophy:hover { background: var(--paper-2); }
+  .trophy:hover .t-tag {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--paper);
+  }
+
+  .t-date {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--ink);
+    padding: 6px 8px;
+    line-height: 1;
+    align-self: start;
+    white-space: nowrap;
+  }
+
+  .t-body h3 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+    line-height: 1.05;
+  }
+  .t-body .where {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .t-body p {
+    font-size: 15px;
+    line-height: 1.4;
+    margin: 12px 0 0;
+    max-width: 44ch;
+  }
+
+  .t-tag {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 5px 9px;
+    border: 1px solid var(--ink);
+    align-self: start;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease,
+      color var(--dur-fast) ease;
+    white-space: nowrap;
+  }
+
+  .t-prize {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-top: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  @media (max-width: 720px) {
+    .trophy {
+      grid-column: span 12;
+      border-right: none;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+    }
+    .trophy .t-tag {
+      grid-column: 2;
+      justify-self: start;
+      margin-top: 4px;
+    }
+    .trophy:nth-child(2n) { border-right: none; }
+    .trophy:nth-last-child(-n + 2) { border-bottom: 1.5px solid var(--ink); }
+    .trophy:last-child { border-bottom: none; }
+  }
+</style>

@@ -1,0 +1,98 @@
+/* Builders Collective — design tokens
+ * Source of truth: _design/design.html §03–05
+ * If you change a value here, update DESIGN.md too.
+ */
+
+:root {
+  /* Color */
+  --paper:   #F4F1EA;
+  --paper-2: #ECE7DA;
+  --ink:     #0B1220;
+  --ink-2:   #1A2238;
+  --navy:    #0E1E40;
+  --accent:  #FF4D1F;
+  --muted:   #6B6356;
+
+  /* Typography stacks */
+  --font-sans:  "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: "Instrument Serif", "Times New Roman", serif;
+
+  /* Type scale (matches DESIGN.md §04 table) */
+  --fs-display-xl: clamp(80px, 14vw, 220px);
+  --fs-display-l:  clamp(40px, 6vw, 88px);
+  --fs-display-m:  36px;
+  --fs-stat:       64px;
+  --fs-title:      22px;
+  --fs-body:       17px;
+  --fs-small:      15px;
+  --fs-meta:       11px;
+
+  /* Letter-spacing */
+  --ls-tightest: -0.04em;
+  --ls-tighter:  -0.02em;
+  --ls-meta:     0.16em;
+
+  /* Layout */
+  --wrap-max:        1440px;
+  --gutter-desktop:  32px;
+  --gutter-mobile:   20px;
+  --section-pad:     72px;
+  --section-pad-sm:  48px;
+
+  /* Borders & rules */
+  --rule-major: 1.5px;
+  --rule-row:   1px;
+
+  /* Motion */
+  --dur-fast:   150ms;
+  --dur-normal: 200ms;
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Self-hosted font declarations — uncomment after dropping .woff2 files into
+ * public/fonts/ (see public/fonts/README.md), then remove the Google Fonts
+ * <link> from Base.astro. */
+
+/*
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/space-grotesk-400.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/space-grotesk-500.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/space-grotesk-600.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/space-grotesk-700.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-700.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/fonts/instrument-serif-italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+*/

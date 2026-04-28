@@ -1,0 +1,41 @@
+---
+interface Props {
+  label: string;
+  value: string | number;
+  caption?: string;
+  accent?: boolean;
+}
+
+const { label, value, caption, accent = false } = Astro.props;
+---
+
+<div class="stat">
+  <div class="k font-mono upper">{label}</div>
+  <div class:list={["v", accent && "accent"]}>{value}</div>
+  {caption && <div class="s font-mono upper">{caption}</div>}
+</div>
+
+<style>
+  .stat { display: block; }
+  .k {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+  .v {
+    font-size: 64px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .v.accent { color: var(--accent); }
+  .s {
+    font-size: 12px;
+    margin-top: 6px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+</style>

@@ -1,0 +1,154 @@
+[
+  {
+    "id": "maya-okafor",
+    "jersey": "01",
+    "role": "Captain",
+    "roleSub": "Full-stack / Team Lead",
+    "year": "'24",
+    "name": "Maya Okafor",
+    "stats": {
+      "wins": 4,
+      "hacks": 11,
+      "ships": 19
+    },
+    "tags": [
+      "Rust",
+      "TypeScript",
+      "Systems"
+    ],
+    "portrait": "/headshots/maya.svg"
+  },
+  {
+    "id": "jonas-park",
+    "jersey": "02",
+    "role": "Design",
+    "roleSub": "Design Engineer",
+    "year": "'25",
+    "name": "Jonas Park",
+    "stats": {
+      "wins": 3,
+      "hacks": 9,
+      "ships": 14
+    },
+    "tags": [
+      "Figma",
+      "R3F",
+      "Motion"
+    ],
+    "portrait": "/headshots/jonas.svg"
+  },
+  {
+    "id": "priya-subramanian",
+    "jersey": "03",
+    "role": "ML",
+    "roleSub": "ML / Agents",
+    "year": "'25",
+    "name": "Priya Subramanian",
+    "stats": {
+      "wins": 3,
+      "hacks": 8,
+      "ships": 12
+    },
+    "tags": [
+      "PyTorch",
+      "LangGraph",
+      "Evals"
+    ],
+    "portrait": "/headshots/priya.svg"
+  },
+  {
+    "id": "theo-bergmann",
+    "jersey": "04",
+    "role": "Hardware",
+    "roleSub": "Hardware / Embedded",
+    "year": "'24",
+    "name": "Theo Bergmann",
+    "stats": {
+      "wins": 2,
+      "hacks": 10,
+      "ships": 17
+    },
+    "tags": [
+      "C++",
+      "QMK",
+      "PCB"
+    ],
+    "portrait": "/headshots/theo.svg"
+  },
+  {
+    "id": "devon-liu",
+    "jersey": "05",
+    "role": "Backend",
+    "roleSub": "Distributed Sys",
+    "year": "'26",
+    "name": "Devon Liu",
+    "stats": {
+      "wins": 2,
+      "hacks": 6,
+      "ships": 9
+    },
+    "tags": [
+      "Go",
+      "Postgres",
+      "Redis"
+    ],
+    "portrait": "/headshots/devon.svg"
+  },
+  {
+    "id": "sasha-volkov",
+    "jersey": "06",
+    "role": "GFX",
+    "roleSub": "Graphics / Shaders",
+    "year": "'25",
+    "name": "Sasha Volkov",
+    "stats": {
+      "wins": 2,
+      "hacks": 7,
+      "ships": 10
+    },
+    "tags": [
+      "WGSL",
+      "Three.js",
+      "WebGPU"
+    ],
+    "portrait": "/headshots/sasha.svg"
+  },
+  {
+    "id": "iris-mendoza",
+    "jersey": "07",
+    "role": "Web",
+    "roleSub": "Frontend / DX",
+    "year": "'26",
+    "name": "Iris Mendoza",
+    "stats": {
+      "wins": 1,
+      "hacks": 5,
+      "ships": 8
+    },
+    "tags": [
+      "Next.js",
+      "TS",
+      "A11y"
+    ],
+    "portrait": "/headshots/iris.svg"
+  },
+  {
+    "id": "alex-chen",
+    "jersey": "08",
+    "role": "Rookie",
+    "roleSub": "Rookie / Anything",
+    "year": "'27",
+    "name": "Alex Chen",
+    "stats": {
+      "wins": 0,
+      "hacks": 2,
+      "ships": 3
+    },
+    "tags": [
+      "Python",
+      "Unity",
+      "Eager"
+    ],
+    "portrait": "/headshots/alex.svg"
+  }
+]

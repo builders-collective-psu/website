@@ -1,0 +1,108 @@
+@import "./tokens.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-size: var(--fs-body);
+    line-height: 1.55;
+    overflow-x: hidden;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Sharp corners across the board — DESIGN.md §05 */
+  img,
+  video,
+  canvas,
+  svg {
+    border-radius: 0;
+    display: block;
+    max-width: 100%;
+  }
+
+  /* Selection in accent — small but on-brand */
+  ::selection {
+    background: var(--accent);
+    color: var(--paper);
+  }
+
+  /* Reduced motion — DESIGN.md §08 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .wrap {
+    width: 100%;
+    max-width: var(--wrap-max);
+    margin-inline: auto;
+    padding-inline: var(--gutter-desktop);
+  }
+
+  @media (max-width: 640px) {
+    .wrap {
+      padding-inline: var(--gutter-mobile);
+    }
+  }
+
+  .display {
+    font-family: var(--font-sans);
+    letter-spacing: var(--ls-tightest);
+    line-height: 0.88;
+    font-weight: 700;
+  }
+
+  .upper {
+    text-transform: uppercase;
+  }
+
+  .rule-t {
+    border-top: var(--rule-major) solid var(--ink);
+  }
+  .rule-b {
+    border-bottom: var(--rule-major) solid var(--ink);
+  }
+  .hairline-t {
+    border-top: var(--rule-row) solid var(--ink);
+  }
+  .hairline-b {
+    border-bottom: var(--rule-row) solid var(--ink);
+  }
+}

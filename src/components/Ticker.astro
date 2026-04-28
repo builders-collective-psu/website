@@ -1,0 +1,111 @@
+---
+interface LogEvent {
+  date: string;
+  event: string;
+  result: { type: "win" | "top" | "ship"; label: string };
+}
+
+interface LogData {
+  events: LogEvent[];
+}
+
+interface Props {
+  log: LogData;
+  limit?: number;
+}
+
+const { log, limit = 12 } = Astro.props;
+
+const items = [...log.events]
+  .sort((a, b) => (a.date < b.date ? 1 : -1))
+  .slice(0, limit)
+  .map((e) => ({
+    label: `${e.event.toUpperCase()} — ${e.result.label.replace(/^★\s*/, "").toUpperCase()}`,
+    isWin: e.result.type === "win",
+  }));
+
+// Two copies inline for seamless CSS-only loop (translateX -50%)
+const tracks = [items, items];
+---
+
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track font-mono">
+    {
+      tracks.map((track) =>
+        track.map((item, i) => (
+          <>
+            <span>
+              {item.isWin && <span class="win">★ WIN</span>}
+              <span class="text">{item.label}</span>
+            </span>
+            {i < track.length - 1 && <span class="sep">/</span>}
+            {i === track.length - 1 && <span class="sep">/</span>}
+          </>
+        ))
+      )
+    }
+  </div>
+</div>
+
+{/* Static, screen-reader-friendly version of the same content */}
+<ul class="sr-only" aria-label="Recent results">
+  {
+    items.map((item) => (
+      <li>{(item.isWin ? "Win — " : "") + item.label}</li>
+    ))
+  }
+</ul>
+
+<style>
+  .ticker {
+    background: var(--ink);
+    color: var(--paper);
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    overflow: hidden;
+    padding: 14px 0;
+  }
+
+  .ticker-track {
+    display: flex;
+    gap: 48px;
+    white-space: nowrap;
+    animation: scroll 40s linear infinite;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    width: max-content;
+  }
+
+  .ticker-track > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .ticker-track .win {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .ticker-track .sep {
+    color: #4a5570;
+    flex-shrink: 0;
+  }
+
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  .ticker:hover .ticker-track {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track {
+      animation: none;
+      transform: none;
+    }
+  }
+</style>

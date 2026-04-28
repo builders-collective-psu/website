@@ -1,0 +1,166 @@
+---
+import Button from "./ui/Button.astro";
+import StatBlock from "./ui/StatBlock.astro";
+import Scoreboard from "./ui/Scoreboard.astro";
+
+interface StatsData {
+  wins: number;
+  hackathons: number;
+  shipped: number;
+  season: { label: string; record: string; note: string };
+  prizeTotal: number;
+  rosterCount: number;
+  milesTraveled: number;
+  travelCities: string;
+}
+
+interface Props {
+  stats: StatsData;
+  filedDate?: string;
+  location?: string;
+}
+
+const {
+  stats,
+  filedDate = "APR 26, 2026",
+  location = "UNIVERSITY PARK, PA",
+} = Astro.props;
+
+const pad = (n: number) => n.toString().padStart(2, "0");
+const formatPrize = (cents: number) =>
+  cents >= 1000 ? `$${Math.round(cents / 1000)}K` : `$${cents}`;
+const formatMiles = (n: number) => n.toLocaleString("en-US");
+
+const scoreboard = [
+  {
+    label: stats.season.label,
+    value: stats.season.record,
+    caption: stats.season.note,
+    accent: true,
+  },
+  {
+    label: "Prize Total",
+    value: formatPrize(stats.prizeTotal),
+    caption: "Cash + Credits",
+  },
+  {
+    label: "Roster",
+    value: pad(stats.rosterCount),
+    caption: "Active Builders",
+  },
+  {
+    label: "Miles Traveled",
+    value: formatMiles(stats.milesTraveled),
+    caption: stats.travelCities,
+  },
+  {
+    label: "Caffeine",
+    value: "∞",
+    caption: "Do Not Ask",
+    accent: true,
+  },
+];
+---
+
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="wrap">
+    <div class="hero-eyebrow font-mono upper">
+      <span>BUILDERS COLLECTIVE — PENN STATE UNIVERSITY</span>
+      <span>FILED: {filedDate} · {location}</span>
+    </div>
+
+    <h1 id="hero-heading" class="display hero-title upper">
+      WE SHIP<br />
+      <span class="amp">while</span> YOU<br />
+      SLEEP.
+    </h1>
+
+    <div class="hero-sub">
+      <p class="manifesto">
+        Builders Collective is a department-funded squad of Penn State engineers,
+        designers, and degenerates who travel to win hackathons. We don't do
+        meetings. We ship.
+      </p>
+      <StatBlock label="WINS" value={pad(stats.wins)} caption="First Place Finishes" />
+      <StatBlock label="HACKATHONS" value={pad(stats.hackathons)} caption="Since 2022" />
+      <StatBlock label="SHIPPED" value={pad(stats.shipped)} caption="Projects Deployed" />
+    </div>
+
+    <div class="ctas">
+      <Button href="#apply" arrow="external">Apply to Build</Button>
+      <Button href="#trophies" variant="ghost" arrow="inline">See the Trophies</Button>
+      <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
+    </div>
+
+    <Scoreboard cells={scoreboard} />
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding: 56px 0 24px;
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+  }
+
+  .hero-eyebrow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    margin-bottom: 28px;
+    color: var(--ink);
+    flex-wrap: wrap;
+  }
+
+  .hero-title {
+    font-size: clamp(80px, 14vw, 220px);
+    font-weight: 700;
+    margin: 0;
+    line-height: 0.88;
+  }
+  .hero-title .amp {
+    color: var(--accent);
+    font-style: italic;
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .hero-sub {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr;
+    gap: 24px;
+    border-top: 1.5px solid var(--ink);
+    padding-top: 18px;
+  }
+
+  .manifesto {
+    font-size: 22px;
+    line-height: 1.18;
+    max-width: 36ch;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  .ctas {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 900px) {
+    .hero-sub { grid-template-columns: 1fr 1fr; }
+    .manifesto { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    .hero { padding: 36px 0 20px; }
+    .hero-eyebrow { font-size: 11px; gap: 8px; }
+    .hero-sub { grid-template-columns: 1fr 1fr; gap: 18px; }
+    .manifesto { font-size: 18px; }
+  }
+</style>

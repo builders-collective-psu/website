@@ -1,0 +1,254 @@
+---
+import SectionHeader from "./ui/SectionHeader.astro";
+
+interface RosterMember {
+  id: string;
+  jersey: string;
+  role: string;
+  roleSub: string;
+  year: string;
+  name: string;
+  stats: { wins: number; hacks: number; ships: number };
+  tags: string[];
+  portrait?: string;
+}
+
+interface StatsData {
+  rosterCount: number;
+  openSlots: number;
+}
+
+interface Props {
+  roster: RosterMember[];
+  stats: StatsData;
+  limit?: number;
+}
+
+const { roster, stats, limit = 8 } = Astro.props;
+
+const cards = roster.slice(0, limit);
+const remaining = Math.max(stats.rosterCount - cards.length, 0);
+
+const pad = (n: number) => n.toString().padStart(2, "0");
+
+const meta = `ACTIVE: ${stats.rosterCount}<br/>OPEN SLOTS: ${stats.openSlots}`;
+---
+
+<section class="sec" id="roster" aria-labelledby="roster-heading">
+  <div class="wrap">
+    <SectionHeader
+      num="03"
+      kicker="ROSTER"
+      title="Twenty-two builders.<br/>One dorm-room HQ."
+      meta={meta}
+      id="roster-heading"
+    />
+
+    <div class="roster">
+      {
+        cards.map((m) => (
+          <article class="card" aria-labelledby={`r-${m.id}`}>
+            <div class="card-top font-mono upper">
+              <span>#{m.jersey} · {m.role}</span>
+              <span>{m.year}</span>
+            </div>
+
+            {m.portrait ? (
+              <div class="card-portrait card-portrait--photo">
+                <img src={m.portrait} alt={`Photo of ${m.name}`} width="200" height="210" loading="lazy" />
+              </div>
+            ) : (
+              <div class="card-portrait" role="img" aria-label={`Portrait placeholder for ${m.name}`}>
+                <span class="font-mono upper">PORTRAIT — 1:1.05</span>
+              </div>
+            )}
+
+            <div class="card-info">
+              <h3 id={`r-${m.id}`} class="nm">{m.name}</h3>
+              <div class="role font-mono upper">{m.roleSub}</div>
+            </div>
+
+            <div class="stats-row">
+              <div class="s">
+                <div class="k font-mono upper">WINS</div>
+                <div class="v">{pad(m.stats.wins)}</div>
+              </div>
+              <div class="s">
+                <div class="k font-mono upper">HACKS</div>
+                <div class="v">{pad(m.stats.hacks)}</div>
+              </div>
+              <div class="s">
+                <div class="k font-mono upper">SHIPS</div>
+                <div class="v">{pad(m.stats.ships)}</div>
+              </div>
+            </div>
+
+            <div class="tags">
+              {m.tags.map((t) => <span class="tg font-mono upper">{t}</span>)}
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    {remaining > 0 && (
+      <div class="archive font-mono">
+        <span>↳ + {remaining} BUILDERS NOT PICTURED</span>
+        <a href="#" class="archive-link">FULL ROSTER ↗</a>
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .sec {
+    padding: 72px 0;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .roster {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-top: 1.5px solid var(--ink);
+    border-left: 1.5px solid var(--ink);
+  }
+
+  .card {
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    background: var(--paper);
+    transition: background var(--dur-normal) ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover { background: var(--paper-2); }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ink);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .card-portrait {
+    aspect-ratio: 1 / 1.05;
+    background: repeating-linear-gradient(
+      135deg,
+      var(--paper-2) 0 8px,
+      var(--paper) 8px 16px
+    );
+    border-bottom: 1px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    position: relative;
+  }
+  .card-portrait::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border: 1px dashed rgba(11, 18, 32, 0.4);
+    pointer-events: none;
+  }
+
+  .card-portrait--photo::after { display: none; }
+  .card-portrait--photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .card-info { padding: 14px; }
+  .card-info .nm {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    margin: 0;
+  }
+  .card-info .role {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--ink);
+  }
+  .stats-row .s {
+    padding: 10px 12px;
+    border-right: 1px solid var(--ink);
+  }
+  .stats-row .s:last-child { border-right: none; }
+  .stats-row .k {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+  .stats-row .v {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tags {
+    padding: 10px 14px;
+    border-top: 1px solid var(--ink);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: auto;
+  }
+  .tags .tg {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 3px 6px;
+    border: 1px solid var(--ink);
+    line-height: 1.4;
+  }
+
+  .archive {
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .archive-link {
+    border-bottom: 1px solid currentColor;
+    transition: color var(--dur-fast) ease;
+  }
+  .archive-link:hover,
+  .archive-link:focus-visible {
+    color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 1024px) {
+    .roster { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .roster { grid-template-columns: 1fr; }
+    .card-info .nm { font-size: 18px; }
+  }
+</style>

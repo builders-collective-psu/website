@@ -1,0 +1,91 @@
+---
+type Variant = "primary" | "ghost";
+
+interface Props {
+  href: string;
+  variant?: Variant;
+  external?: boolean;
+  arrow?: "external" | "inline" | "none";
+  class?: string;
+}
+
+const {
+  href,
+  variant = "primary",
+  external,
+  arrow = "external",
+  class: className = "",
+} = Astro.props;
+
+const isExternal = external ?? /^https?:\/\//.test(href);
+const arrowGlyph = arrow === "external" ? "↗" : arrow === "inline" ? "→" : "";
+---
+
+<a
+  href={href}
+  class:list={["btn", `btn--${variant}`, className]}
+  target={isExternal ? "_blank" : undefined}
+  rel={isExternal ? "noopener noreferrer" : undefined}
+>
+  <span class="label"><slot /></span>
+  {arrowGlyph && <span class="arrow font-mono" aria-hidden="true">{arrowGlyph}</span>}
+</a>
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 22px;
+    border: 1.5px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 13px;
+    line-height: 1;
+    transition: transform var(--dur-fast) ease, background var(--dur-fast) ease,
+      color var(--dur-fast) ease, border-color var(--dur-fast) ease,
+      box-shadow var(--dur-fast) ease;
+  }
+
+  .btn:hover,
+  .btn:focus-visible {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--paper);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--ink);
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .btn--ghost {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .btn--ghost:hover,
+  .btn--ghost:focus-visible {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+    box-shadow: 4px 4px 0 var(--accent);
+    outline-color: var(--ink);
+  }
+
+  .arrow {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn,
+    .btn:hover,
+    .btn:focus-visible {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+</style>

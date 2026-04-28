@@ -1,0 +1,120 @@
+---
+interface SiteData {
+  name: string;
+  volume: string;
+  issue: string;
+  established: string;
+  nav: { label: string; href: string }[];
+}
+
+interface StatsData {
+  nextEvent: { name: string; daysOut: number };
+}
+
+interface Props {
+  site: SiteData;
+  stats: StatsData;
+}
+
+const { site, stats } = Astro.props;
+const next = stats.nextEvent;
+---
+
+<header class="masthead rule-b" aria-label="Site header">
+  <div class="wrap row">
+    <div class="mast-meta font-mono upper">
+      <span>{site.volume}</span>
+      <span>{site.issue}</span>
+      <span>EST. {site.established}</span>
+    </div>
+
+    <div class="mast-status">
+      <span
+        class="pill font-mono upper"
+        aria-label={`Next build: ${next.name} in ${next.daysOut} days`}
+      >
+        <span class="dot blink" aria-hidden="true"></span>
+        NEXT BUILD: {next.name.toUpperCase()} · {next.daysOut} DAYS
+      </span>
+    </div>
+
+    <nav class="nav font-mono upper" aria-label="Main navigation">
+      {site.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+    </nav>
+  </div>
+</header>
+
+<style>
+  .masthead {
+    padding: 14px 0;
+    background: var(--paper);
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .mast-meta {
+    display: flex;
+    gap: 24px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+  }
+
+  .mast-status { display: flex; align-items: center; }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border: 1px solid var(--ink);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    background: var(--paper);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  .blink {
+    animation: blink 1.4s steps(2, end) infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0.25; }
+  }
+
+  .nav {
+    display: flex;
+    gap: 28px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+  }
+
+  .nav a {
+    transition: color var(--dur-fast) ease;
+  }
+
+  .nav a:hover,
+  .nav a:focus-visible {
+    color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 720px) {
+    .row { gap: 12px; }
+    .mast-meta { font-size: 11px; gap: 14px; }
+    .nav { gap: 18px; font-size: 11px; }
+    .mast-status { order: 3; width: 100%; }
+  }
+</style>

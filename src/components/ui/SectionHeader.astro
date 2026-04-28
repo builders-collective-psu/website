@@ -1,0 +1,80 @@
+---
+interface Props {
+  num: string;
+  kicker: string;
+  /** Two-line title — first line above, second line below. Use `<br/>` in slot for inline break. */
+  title?: string;
+  meta?: string;
+  inverted?: boolean;
+  id?: string;
+}
+
+const { num, kicker, title, meta, inverted = false, id } = Astro.props;
+---
+
+<header class:list={["sec-head", inverted && "sec-head--inv"]}>
+  <div class="left">
+    <div class="sec-num font-mono upper">§ {num} — {kicker}</div>
+    {title ? (
+      <h2 id={id} class="sec-title display upper" set:html={title} />
+    ) : (
+      <h2 id={id} class="sec-title display upper"><slot /></h2>
+    )}
+  </div>
+  {meta && <div class="sec-meta font-mono upper" set:html={meta} />}
+</header>
+
+<style>
+  .sec-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 24px;
+    margin-bottom: 36px;
+    padding-bottom: 18px;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .sec-num {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+
+  .sec-title {
+    font-size: clamp(40px, 6vw, 88px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.92;
+    margin: 8px 0 0;
+  }
+
+  .sec-meta {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-align: right;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .sec-head--inv {
+    border-bottom-color: rgba(244, 241, 234, 0.3);
+  }
+  .sec-head--inv .sec-num,
+  .sec-head--inv .sec-meta {
+    color: rgba(244, 241, 234, 0.6);
+  }
+  .sec-head--inv .sec-title {
+    color: var(--paper);
+  }
+
+  @media (max-width: 720px) {
+    .sec-head {
+      grid-template-columns: 1fr;
+    }
+    .sec-meta {
+      text-align: left;
+    }
+  }
+</style>

@@ -1,0 +1,95 @@
+{
+  "season": "2025-2026",
+  "events": [
+    {
+      "date": "2026-04-19",
+      "dateShort": "APR 19 '26",
+      "event": "HackNYU",
+      "project": "keystroke.live",
+      "stack": ["QMK", "WebSerial", "Three.js"],
+      "result": { "type": "win", "label": "★ 1ST" },
+      "url": "https://github.com/builders-collective/keystroke-live"
+    },
+    {
+      "date": "2026-03-28",
+      "dateShort": "MAR 28 '26",
+      "event": "HopHacks",
+      "project": "edge-clinical",
+      "stack": ["Rust", "WASM", "ONNX"],
+      "result": { "type": "win", "label": "★ 1ST" },
+      "url": "https://github.com/builders-collective/edge-clinical"
+    },
+    {
+      "date": "2026-02-14",
+      "dateShort": "FEB 14 '26",
+      "event": "TreeHacks",
+      "project": "drift-detector",
+      "stack": ["PyTorch", "Modal", "Postgres"],
+      "result": { "type": "top", "label": "FINALIST" },
+      "url": "https://github.com/builders-collective/drift-detector"
+    },
+    {
+      "date": "2026-02-01",
+      "dateShort": "FEB 01 '26",
+      "event": "MIT Reality Hack",
+      "project": "airdrum",
+      "stack": ["WebXR", "Quest 3", "Tone.js"],
+      "result": { "type": "win", "label": "★ 1ST" },
+      "url": "https://github.com/builders-collective/airdrum"
+    },
+    {
+      "date": "2025-11-09",
+      "dateShort": "NOV 09 '25",
+      "event": "YaleHacks",
+      "project": "stempile",
+      "stack": ["Three.js", "Web Audio", "R3F"],
+      "result": { "type": "win", "label": "★ 1ST" },
+      "url": "https://github.com/builders-collective/stempile"
+    },
+    {
+      "date": "2025-10-25",
+      "dateShort": "OCT 25 '25",
+      "event": "HackHarvard",
+      "project": "cohere-review",
+      "stack": ["Liveblocks", "TS", "tRPC"],
+      "result": { "type": "win", "label": "★ 1ST" },
+      "url": "https://github.com/builders-collective/cohere-review"
+    },
+    {
+      "date": "2025-10-04",
+      "dateShort": "OCT 04 '25",
+      "event": "HackPrinceton",
+      "project": "paperboy",
+      "stack": ["Next.js", "Anthropic API"],
+      "result": { "type": "top", "label": "TOP 5" },
+      "url": "https://github.com/builders-collective/paperboy"
+    },
+    {
+      "date": "2025-09-13",
+      "dateShort": "SEP 13 '25",
+      "event": "PennApps XXV",
+      "project": "methodlint",
+      "stack": ["Anthropic", "LangGraph", "Postgres"],
+      "result": { "type": "win", "label": "★ 1ST" },
+      "url": "https://github.com/builders-collective/methodlint"
+    },
+    {
+      "date": "2025-04-12",
+      "dateShort": "APR 12 '25",
+      "event": "CalHacks 11.0",
+      "project": "tinybench",
+      "stack": ["Rust", "Wasmtime"],
+      "result": { "type": "top", "label": "TOP 10" },
+      "url": "https://github.com/builders-collective/tinybench"
+    },
+    {
+      "date": "2025-03-01",
+      "dateShort": "MAR 01 '25",
+      "event": "BitCamp",
+      "project": "repl.fm",
+      "stack": ["Tauri", "Web Audio"],
+      "result": { "type": "ship", "label": "SHIPPED" },
+      "url": "https://github.com/builders-collective/repl-fm"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+---
+export interface Cell {
+  label: string;
+  value: string;
+  caption?: string;
+  accent?: boolean;
+}
+
+interface Props {
+  cells: Cell[];
+}
+
+const { cells } = Astro.props;
+---
+
+<div class="scoreboard" role="group" aria-label="Season scoreboard">
+  {
+    cells.map((c) => (
+      <div class="cell">
+        <div class="k font-mono upper">{c.label}</div>
+        <div class:list={["v", c.accent && "accent"]}>{c.value}</div>
+        {c.caption && <div class="s font-mono upper">{c.caption}</div>}
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .scoreboard {
+    margin-top: 36px;
+    border: 1.5px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .cell {
+    padding: 18px 20px;
+    border-right: 1px solid rgba(244, 241, 234, 0.18);
+  }
+  .cell:last-child { border-right: none; }
+
+  .k {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: rgba(244, 241, 234, 0.6);
+    line-height: 1.2;
+  }
+  .v {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .v.accent { color: var(--accent); }
+  .s {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: rgba(244, 241, 234, 0.7);
+    margin-top: 4px;
+    letter-spacing: 0.1em;
+  }
+
+  @media (max-width: 900px) {
+    .scoreboard { grid-template-columns: 1fr 1fr; }
+    .cell { border-bottom: 1px solid rgba(244, 241, 234, 0.18); }
+    .cell:nth-last-child(-n + 2) { border-bottom: none; }
+    .cell:nth-child(2n) { border-right: none; }
+  }
+  @media (max-width: 480px) {
+    .scoreboard { grid-template-columns: 1fr; }
+    .cell { border-right: none; border-bottom: 1px solid rgba(244, 241, 234, 0.18); }
+    .cell:last-child { border-bottom: none; }
+  }
+</style>

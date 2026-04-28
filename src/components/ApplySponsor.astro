@@ -1,0 +1,158 @@
+---
+import SectionHeader from "./ui/SectionHeader.astro";
+import Button from "./ui/Button.astro";
+
+interface ApplyData {
+  deadlineLabel: string;
+  decisions: string;
+  builderApply: string;
+  builderHeadline: string;
+  builderCopy: string;
+  sponsorHeadline: string;
+  sponsorCopy: string;
+  sponsorEmail: string;
+  sponsorDeck: string;
+}
+
+interface Props {
+  apply: ApplyData;
+}
+
+const { apply } = Astro.props;
+const meta = `APPS CLOSE: ${apply.deadlineLabel}<br/>DECISIONS: ${apply.decisions.toUpperCase()}`;
+---
+
+<section class="apply" id="apply" aria-labelledby="apply-heading">
+  <div class="wrap">
+    <SectionHeader
+      num="04"
+      kicker="RECRUITS · SPONSORS"
+      title="Want in?<br/>Two ways."
+      meta={meta}
+      inverted
+      id="apply-heading"
+    />
+
+    <div class="cols">
+      <div class="col col--builders">
+        <div class="kicker font-mono upper">FOR BUILDERS</div>
+        <h3 class="head">{apply.builderHeadline}</h3>
+        <p class="copy">{apply.builderCopy}</p>
+        <div class="ctas">
+          <Button href={apply.builderApply} arrow="external" class="btn--solid">Apply</Button>
+          <Button href="#bar" variant="ghost" arrow="inline" class="btn--inv">See the Bar</Button>
+        </div>
+      </div>
+
+      <div class="col col--sponsors" id="sponsor">
+        <div class="kicker font-mono upper">FOR SPONSORS · DEPT</div>
+        <h3 class="head">{apply.sponsorHeadline}</h3>
+        <p class="copy">{apply.sponsorCopy}</p>
+        <div class="ctas">
+          <Button href={apply.sponsorDeck} arrow="external" class="btn--solid">Sponsor Deck</Button>
+          <Button href={`mailto:${apply.sponsorEmail}`} variant="ghost" arrow="inline" class="btn--inv">
+            Email Captain
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .apply {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 96px 0;
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    row-gap: 32px;
+  }
+
+  .col {
+    padding: 0 32px 0 0;
+  }
+  .col--builders {
+    border-right: 1px solid rgba(244, 241, 234, 0.3);
+  }
+  .col--sponsors {
+    padding: 0 0 0 32px;
+  }
+
+  .kicker {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  .head {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 12px 0 16px;
+    color: var(--paper);
+  }
+
+  .copy {
+    font-size: 17px;
+    line-height: 1.5;
+    max-width: 50ch;
+    color: rgba(244, 241, 234, 0.85);
+    margin: 0;
+  }
+
+  .ctas {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  /* Inverted button styling: solid CTA = accent fill, ghost = paper outline */
+  .ctas :global(.btn--solid) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--paper);
+  }
+  .ctas :global(.btn--solid:hover),
+  .ctas :global(.btn--solid:focus-visible) {
+    background: var(--paper);
+    border-color: var(--paper);
+    color: var(--ink);
+    box-shadow: 4px 4px 0 var(--accent);
+    outline-color: var(--paper);
+  }
+
+  .ctas :global(.btn--inv) {
+    background: transparent;
+    border-color: var(--paper);
+    color: var(--paper);
+  }
+  .ctas :global(.btn--inv:hover),
+  .ctas :global(.btn--inv:focus-visible) {
+    background: var(--paper);
+    border-color: var(--paper);
+    color: var(--ink);
+    box-shadow: 4px 4px 0 var(--accent);
+    outline-color: var(--paper);
+  }
+
+  @media (max-width: 720px) {
+    .cols { grid-template-columns: 1fr; }
+    .col {
+      padding: 0;
+      border-right: none;
+    }
+    .col--builders {
+      padding-bottom: 32px;
+      border-bottom: 1px solid rgba(244, 241, 234, 0.3);
+    }
+    .col--sponsors { padding: 32px 0 0 0; }
+    .head { font-size: 28px; }
+  }
+</style>

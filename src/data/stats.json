@@ -1,0 +1,20 @@
+{
+  "wins": 6,
+  "hackathons": 14,
+  "shipped": 38,
+  "season": {
+    "label": "Season 26",
+    "record": "3-0",
+    "note": "Undefeated"
+  },
+  "prizeTotal": 84000,
+  "rosterCount": 22,
+  "openSlots": 4,
+  "milesTraveled": 11420,
+  "travelCities": "Cambridge · NYC · SF",
+  "winRate": 0.43,
+  "nextEvent": {
+    "name": "HackMIT",
+    "daysOut": 18
+  }
+}

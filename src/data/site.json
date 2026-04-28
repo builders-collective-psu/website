@@ -1,0 +1,21 @@
+{
+  "name": "Builders Collective",
+  "tagline": "Penn State University",
+  "established": "2022",
+  "volume": "VOL. III",
+  "issue": "ISSUE 04",
+  "location": "University Park, PA",
+  "domain": "builders.databunker.uk",
+  "email": "hello@builders.psu.edu",
+  "social": {
+    "github": "https://github.com/builders-collective",
+    "twitter": "https://twitter.com/builderscollective",
+    "instagram": "https://instagram.com/builderscollective"
+  },
+  "nav": [
+    { "label": "Trophies", "href": "#trophies" },
+    { "label": "Log", "href": "#log" },
+    { "label": "Roster", "href": "#roster" },
+    { "label": "Apply", "href": "#apply" }
+  ]
+}

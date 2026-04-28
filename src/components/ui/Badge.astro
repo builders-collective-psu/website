@@ -1,0 +1,41 @@
+---
+type Variant = "win" | "top" | "ship";
+
+interface Props {
+  variant: Variant;
+  label: string;
+}
+
+const { variant, label } = Astro.props;
+---
+
+<span class:list={["badge", `badge--${variant}`, "font-mono"]}>{label}</span>
+
+<style>
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    padding: 4px 7px;
+    border: 1px solid var(--ink);
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .badge--win {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--paper);
+  }
+
+  .badge--top {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .badge--ship {
+    background: transparent;
+    color: var(--ink);
+  }
+</style>

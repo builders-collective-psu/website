@@ -1,0 +1,193 @@
+---
+import SectionHeader from "./ui/SectionHeader.astro";
+import Badge from "./ui/Badge.astro";
+
+interface LogEvent {
+  date: string;
+  dateShort: string;
+  event: string;
+  project: string;
+  stack: string[];
+  result: { type: "win" | "top" | "ship"; label: string };
+  url?: string;
+}
+
+interface LogData {
+  season: string;
+  events: LogEvent[];
+}
+
+interface Props {
+  log: LogData;
+  limit?: number;
+  archiveHref?: string;
+}
+
+const { log, limit = 10, archiveHref = "#" } = Astro.props;
+
+const events = [...log.events]
+  .sort((a, b) => (a.date < b.date ? 1 : -1))
+  .slice(0, limit);
+
+const totalEvents = log.events.length;
+const totalWins = log.events.filter((e) => e.result.type === "win").length;
+const totalShips = log.events.length;
+const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${totalShips} SHIPS<br/>SEASON: ${log.season.replace("-", " — ")}`;
+---
+
+<section class="sec" id="log" aria-labelledby="log-heading">
+  <div class="wrap">
+    <SectionHeader
+      num="02"
+      kicker="HACKATHON LOG"
+      title="Every weekend,<br/>on the record."
+      meta={meta}
+      id="log-heading"
+    />
+
+    <div class="table-wrap">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th class="col-date" scope="col">DATE</th>
+            <th scope="col">EVENT</th>
+            <th scope="col">PROJECT</th>
+            <th scope="col">STACK</th>
+            <th class="col-result" scope="col">RESULT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            events.map((e) => (
+              <tr>
+                <td class="t-date font-mono">{e.dateShort}</td>
+                <td class="t-event">{e.event}</td>
+                <td class="t-project font-mono">
+                  {e.url ? (
+                    <a href={e.url} target="_blank" rel="noopener noreferrer">{e.project}</a>
+                  ) : (
+                    e.project
+                  )}
+                </td>
+                <td class="t-stack font-mono">{e.stack.join(" · ")}</td>
+                <td>
+                  <Badge variant={e.result.type} label={e.result.label} />
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archive font-mono">
+      <span>↳ FULL ARCHIVE — {totalEvents} EVENTS</span>
+      <a href={archiveHref} class="archive-link">VIEW ALL ↗</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .sec {
+    padding: 72px 0;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+
+  .log-table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    padding: 10px 12px;
+    border-bottom: 1.5px solid var(--ink);
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .log-table td {
+    padding: 18px 12px;
+    border-bottom: 1px solid rgba(11, 18, 32, 0.18);
+    vertical-align: top;
+  }
+
+  .log-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .log-table tbody tr {
+    transition: background var(--dur-normal) ease;
+  }
+  .log-table tbody tr:hover td { background: var(--paper-2); }
+
+  .col-date { width: 120px; }
+  .col-result { width: 110px; }
+
+  .t-date {
+    font-size: 13px;
+    white-space: nowrap;
+    color: var(--muted);
+  }
+  .t-event {
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+  }
+  .t-project {
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .t-project a {
+    border-bottom: 1px solid transparent;
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+  }
+  .t-project a:hover,
+  .t-project a:focus-visible {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .t-stack {
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .archive {
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .archive-link {
+    border-bottom: 1px solid currentColor;
+    transition: color var(--dur-fast) ease;
+  }
+  .archive-link:hover,
+  .archive-link:focus-visible {
+    color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .log-table { font-size: 14px; }
+    .log-table td { padding: 14px 10px; }
+    .t-event { font-size: 15px; }
+  }
+</style>
