@@ -1,24 +1,25 @@
 ---
 import Base from "@layouts/Base.astro";
 import Hero from "@components/Hero.astro";
-import Ticker from "@components/Ticker.astro";
 import TrophyCase from "@components/TrophyCase.astro";
+import WhyEnti from "@components/WhyEnti.astro";
 import HackathonLog from "@components/HackathonLog.astro";
-import Roster from "@components/Roster.astro";
+import Team from "@components/Team.astro";
 import ApplySponsor from "@components/ApplySponsor.astro";
 
 import stats from "@data/stats.json";
 import trophies from "@data/trophies.json";
+import enti from "@data/enti.json";
 import log from "@data/log.json";
-import roster from "@data/roster.json";
+import team from "@data/team.json";
 import apply from "@data/apply.json";
 ---
 
 <Base>
   <Hero stats={stats} />
-  <Ticker log={log} />
-  <TrophyCase trophies={trophies} winRate={stats.winRate} />
+  <TrophyCase trophies={trophies} />
+  <WhyEnti enti={enti} />
   <HackathonLog log={log} />
-  <Roster roster={roster} stats={stats} />
+  <Team team={team} />
   <ApplySponsor apply={apply} />
 </Base>

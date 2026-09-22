@@ -1,0 +1,210 @@
+---
+import { existsSync } from "node:fs";
+import SectionHeader from "./ui/SectionHeader.astro";
+
+interface Member {
+  id: string;
+  name: string;
+  role: string;
+  /** Academic detail shown as badges. Left blank until we have it. */
+  major?: string;
+  year?: string;
+  linkedin?: string;
+  /** LinkedIn username; also the filename of their photo, if we have one. */
+  linkedinSlug?: string;
+  /** Initials tile, used when there is no photo. */
+  portrait?: string;
+}
+
+interface Props {
+  team: Member[];
+}
+
+const { team } = Astro.props;
+
+/**
+ * Photos live in public/headshots/linkedin/<linkedinSlug>.<ext> — see the
+ * README there. Resolved at build time so a missing photo quietly falls back
+ * to the initials tile instead of rendering a broken image.
+ */
+const PHOTO_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+
+function photoFor(slug?: string): string | undefined {
+  if (!slug) return undefined;
+  for (const ext of PHOTO_EXTENSIONS) {
+    const path = `headshots/linkedin/${slug}.${ext}`;
+    if (existsSync(new URL(`../../public/${path}`, import.meta.url))) {
+      return `/${path}`;
+    }
+  }
+  return undefined;
+}
+
+const cards = team.map((m) => ({
+  ...m,
+  image: photoFor(m.linkedinSlug) ?? m.portrait,
+}));
+---
+
+<section class="sec" id="team" aria-labelledby="team-heading">
+  <div class="wrap">
+    <SectionHeader title="Our Team" id="team-heading" />
+
+    <div class="grid">
+      {
+        cards.map((m) => (
+          <article class="card" aria-labelledby={`t-${m.id}`}>
+            <div class="card-top font-mono upper">{m.role}</div>
+
+            {m.image ? (
+              <div class="card-portrait card-portrait--photo">
+                <img src={m.image} alt={m.name} width="200" height="210" loading="lazy" />
+              </div>
+            ) : (
+              <div class="card-portrait" role="img" aria-label={`Portrait placeholder for ${m.name}`}>
+                <span class="font-mono upper">PORTRAIT — 1:1.05</span>
+              </div>
+            )}
+
+            <div class="card-info">
+              <h3 id={`t-${m.id}`} class="nm">{m.name}</h3>
+              {m.linkedin && (
+                <a
+                  class="li font-mono upper"
+                  href={m.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  LinkedIn ↗
+                </a>
+              )}
+            </div>
+
+            {(m.major || m.year) && (
+              <div class="tags">
+                {m.major && <span class="tg font-mono upper">{m.major}</span>}
+                {m.year && <span class="tg font-mono upper">{m.year}</span>}
+              </div>
+            )}
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .sec {
+    padding: 72px 0;
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-top: 1.5px solid var(--ink);
+    border-left: 1.5px solid var(--ink);
+  }
+
+  .card {
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    background: var(--paper);
+    transition: background var(--dur-normal) ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover { background: var(--paper-2); }
+
+  .card-top {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ink);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .card-portrait {
+    aspect-ratio: 1 / 1.05;
+    background: repeating-linear-gradient(
+      135deg,
+      var(--paper-2) 0 8px,
+      var(--paper) 8px 16px
+    );
+    border-bottom: 1px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    position: relative;
+  }
+  .card-portrait::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border: 1px dashed var(--dash);
+    pointer-events: none;
+  }
+
+  .card-portrait--photo::after { display: none; }
+  .card-portrait--photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .card-info {
+    padding: 14px;
+    margin-top: auto;
+  }
+  .card-info .nm {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    margin: 0;
+  }
+
+  .li {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: 1px solid currentColor;
+    transition: color var(--dur-fast) ease;
+  }
+  .li:hover,
+  .li:focus-visible {
+    color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .tags {
+    padding: 0 14px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tags .tg {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 3px 6px;
+    border: 1px solid var(--ink);
+    line-height: 1.4;
+  }
+
+  @media (max-width: 1024px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; }
+    .card-info .nm { font-size: 18px; }
+  }
+</style>

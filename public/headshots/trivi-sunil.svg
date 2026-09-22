@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 210" role="img" aria-label="Trivi Sunil">
+  <defs>
+    <pattern id="s" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
+      <line x1="0" y1="0" x2="0" y2="20" stroke="#1A2238" stroke-width="9"/>
+    </pattern>
+  </defs>
+  <rect width="200" height="210" fill="#0B1220"/>
+  <rect width="200" height="210" fill="url(#s)"/>
+  <text x="100" y="105" text-anchor="middle" dominant-baseline="central"
+    font-family="system-ui,-apple-system,sans-serif" font-size="68" font-weight="700"
+    letter-spacing="-2" fill="#F4F1EA">TS</text>
+  <rect x="80" y="160" width="40" height="3" fill="#FF4D1F"/>
+</svg>

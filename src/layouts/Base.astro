@@ -13,7 +13,7 @@ interface Props {
 
 const {
   title = `${site.name} — ${site.tagline}`,
-  description = "Department-funded squad of Penn State engineers, designers, and degenerates who travel to win hackathons.",
+  description = "Department-funded team of Penn State engineers and designers who travel to hackathons and build things.",
   ogImage = "/og.svg",
 } = Astro.props;
 
@@ -25,8 +25,28 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://builders.da
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="color-scheme" content="light only" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#F4F1EA" />
+
+    {/* Set the theme before first paint so there is no flash of the wrong one. */}
+    <script is:inline>
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("theme");
+        } catch (e) {}
+        var theme =
+          stored === "light" || stored === "dark"
+            ? stored
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        document.documentElement.dataset.theme = theme;
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute("content", theme === "dark" ? "#0B1220" : "#F4F1EA");
+      })();
+    </script>
 
     <title>{title}</title>
     <meta name="description" content={description} />

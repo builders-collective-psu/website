@@ -8,7 +8,7 @@ interface LogEvent {
   event: string;
   project: string;
   stack: string[];
-  result: { type: "win" | "top" | "ship"; label: string };
+  result: { type: string; label: string };
   url?: string;
 }
 
@@ -20,10 +20,9 @@ interface LogData {
 interface Props {
   log: LogData;
   limit?: number;
-  archiveHref?: string;
 }
 
-const { log, limit = 10, archiveHref = "#" } = Astro.props;
+const { log, limit = 10 } = Astro.props;
 
 const events = [...log.events]
   .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -31,19 +30,12 @@ const events = [...log.events]
 
 const totalEvents = log.events.length;
 const totalWins = log.events.filter((e) => e.result.type === "win").length;
-const totalShips = log.events.length;
-const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${totalShips} SHIPS<br/>SEASON: ${log.season.replace("-", " — ")}`;
+const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${log.season.replace("-", "—")}`;
 ---
 
 <section class="sec" id="log" aria-labelledby="log-heading">
   <div class="wrap">
-    <SectionHeader
-      num="02"
-      kicker="HACKATHON LOG"
-      title="Every weekend,<br/>on the record."
-      meta={meta}
-      id="log-heading"
-    />
+    <SectionHeader title="Hackathon Log" meta={meta} id="log-heading" />
 
     <div class="table-wrap">
       <table class="log-table">
@@ -71,18 +63,13 @@ const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${totalShips} SHIPS<
                 </td>
                 <td class="t-stack font-mono">{e.stack.join(" · ")}</td>
                 <td>
-                  <Badge variant={e.result.type} label={e.result.label} />
+                  <Badge variant={e.result.type as "win" | "top" | "ship"} label={e.result.label} />
                 </td>
               </tr>
             ))
           }
         </tbody>
       </table>
-    </div>
-
-    <div class="archive font-mono">
-      <span>↳ FULL ARCHIVE — {totalEvents} EVENTS</span>
-      <a href={archiveHref} class="archive-link">VIEW ALL ↗</a>
     </div>
   </div>
 </section>
@@ -118,7 +105,7 @@ const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${totalShips} SHIPS<
 
   .log-table td {
     padding: 18px 12px;
-    border-bottom: 1px solid rgba(11, 18, 32, 0.18);
+    border-bottom: 1px solid var(--hairline);
     vertical-align: top;
   }
 
@@ -164,26 +151,6 @@ const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${totalShips} SHIPS<
     color: var(--ink-2);
   }
 
-  .archive {
-    margin-top: 20px;
-    font-size: 12px;
-    color: var(--muted);
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .archive-link {
-    border-bottom: 1px solid currentColor;
-    transition: color var(--dur-fast) ease;
-  }
-  .archive-link:hover,
-  .archive-link:focus-visible {
-    color: var(--accent);
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-  }
 
   @media (max-width: 640px) {
     .log-table { font-size: 14px; }

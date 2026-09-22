@@ -3,8 +3,11 @@
  * If you change a value here, update DESIGN.md too.
  */
 
+/* Palette — light is the default; dark mirrors it. Semantic tokens below are
+ * derived from --paper / --ink, so they follow whichever palette is active. */
 :root {
-  /* Color */
+  color-scheme: light;
+
   --paper:   #F4F1EA;
   --paper-2: #ECE7DA;
   --ink:     #0B1220;
@@ -12,6 +15,44 @@
   --navy:    #0E1E40;
   --accent:  #FF4D1F;
   --muted:   #6B6356;
+}
+
+/* No explicit choice stored — follow the device. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --paper:   #0B1220;
+    --paper-2: #151E31;
+    --ink:     #F4F1EA;
+    --ink-2:   #CFC9BC;
+    --navy:    #C6D2EC;
+    --accent:  #FF6A3D;
+    --muted:   #9A9284;
+  }
+}
+
+/* Explicit choice from the theme toggle. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper:   #0B1220;
+  --paper-2: #151E31;
+  --ink:     #F4F1EA;
+  --ink-2:   #CFC9BC;
+  --navy:    #C6D2EC;
+  --accent:  #FF6A3D;
+  --muted:   #9A9284;
+}
+
+:root {
+  /* Derived surfaces — hairlines on paper, and text/rules inside ink-filled
+   * blocks (buttons, the apply section, card headers). */
+  --hairline:       color-mix(in srgb, var(--ink) 18%, transparent);
+  --dash:           color-mix(in srgb, var(--ink) 40%, transparent);
+  --inverse-rule:   color-mix(in srgb, var(--paper) 30%, transparent);
+  --inverse-text:   color-mix(in srgb, var(--paper) 85%, transparent);
+  --inverse-muted:  color-mix(in srgb, var(--paper) 60%, transparent);
 
   /* Typography stacks */
   --font-sans:  "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;

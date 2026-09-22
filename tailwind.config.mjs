@@ -5,14 +5,16 @@ export default {
   content: ['./src/**/*.{astro,html,js,jsx,ts,tsx,md,mdx}'],
   theme: {
     extend: {
+      // Pointed at the CSS variables in src/styles/tokens.css so utility
+      // classes follow the active light/dark palette.
       colors: {
-        paper: '#F4F1EA',
-        'paper-2': '#ECE7DA',
-        ink: '#0B1220',
-        'ink-2': '#1A2238',
-        navy: '#0E1E40',
-        accent: '#FF4D1F',
-        muted: '#6B6356',
+        paper: 'var(--paper)',
+        'paper-2': 'var(--paper-2)',
+        ink: 'var(--ink)',
+        'ink-2': 'var(--ink-2)',
+        navy: 'var(--navy)',
+        accent: 'var(--accent)',
+        muted: 'var(--muted)',
       },
       fontFamily: {
         sans: ['"Space Grotesk"', ...defaultTheme.fontFamily.sans],

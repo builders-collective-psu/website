@@ -1,0 +1,102 @@
+[
+  {
+    "id": "ishaan-narang",
+    "name": "Ishaan Narang",
+    "role": "President",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/ishaannarang22/",
+    "linkedinSlug": "ishaannarang22",
+    "portrait": "/headshots/ishaan-narang.svg"
+  },
+  {
+    "id": "lance-streuber",
+    "name": "Lance Streuber",
+    "role": "Treasurer",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/lance-streuber/",
+    "linkedinSlug": "lance-streuber",
+    "portrait": "/headshots/lance-streuber.svg"
+  },
+  {
+    "id": "vidyut-sriram",
+    "name": "Vidyut Sriram",
+    "role": "Vice President",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/vidyut-sriram-4b5a012aa/",
+    "linkedinSlug": "vidyut-sriram-4b5a012aa",
+    "portrait": "/headshots/vidyut-sriram.svg"
+  },
+  {
+    "id": "varnika-yadav",
+    "name": "Varnika Yadav",
+    "role": "Event Planner",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/varnika-yadav-vvy5053/",
+    "linkedinSlug": "varnika-yadav-vvy5053",
+    "portrait": "/headshots/varnika-yadav.svg"
+  },
+  {
+    "id": "devaj-solanki",
+    "name": "Devaj Solanki",
+    "role": "Head of Logistics",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/dev-solanki-b9a43a50/",
+    "linkedinSlug": "dev-solanki-b9a43a50",
+    "portrait": "/headshots/devaj-solanki.svg"
+  },
+  {
+    "id": "anusha-agarwal",
+    "name": "Anusha Agarwal",
+    "role": "Outreach",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/anushaagarwal10/",
+    "linkedinSlug": "anushaagarwal10",
+    "portrait": "/headshots/anusha-agarwal.svg"
+  },
+  {
+    "id": "trivi-sunil",
+    "name": "Trivi Sunil",
+    "role": "Outreach",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/trivi-sunil/",
+    "linkedinSlug": "trivi-sunil",
+    "portrait": "/headshots/trivi-sunil.svg"
+  },
+  {
+    "id": "abhinav-dasari",
+    "name": "Abhinav Dasari",
+    "role": "Inner Comms",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/abhinav-dasari-852952241/",
+    "linkedinSlug": "abhinav-dasari-852952241",
+    "portrait": "/headshots/abhinav-dasari.svg"
+  },
+  {
+    "id": "vedant-shirvi",
+    "name": "Vedant Shirvi",
+    "role": "Safety",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/vedantshirvi/",
+    "linkedinSlug": "vedantshirvi",
+    "portrait": "/headshots/vedant-shirvi.svg"
+  },
+  {
+    "id": "mat-manna",
+    "name": "Mat Manna",
+    "role": "Engineering",
+    "major": "",
+    "year": "",
+    "linkedin": "https://www.linkedin.com/in/matmanna/",
+    "linkedinSlug": "matmanna",
+    "portrait": "/headshots/mat-manna.svg"
+  }
+]

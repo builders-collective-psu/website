@@ -15,11 +15,10 @@ interface Trophy {
 
 interface Props {
   trophies: Trophy[];
-  winRate?: number;
   limit?: number;
 }
 
-const { trophies, winRate, limit = 6 } = Astro.props;
+const { trophies, limit = 6 } = Astro.props;
 
 const wins = trophies
   .filter((t) => t.place === 1)
@@ -32,20 +31,12 @@ const fmtCash = (n: number) =>
 const fmtCashFull = (n: number) =>
   `$${n.toLocaleString("en-US")}`;
 
-const winRateLabel =
-  typeof winRate === "number" ? `${Math.round(winRate * 100)}%` : "—";
-const meta = `TOTAL PRIZE: ${fmtCashFull(totalPrize)}<br/>WIN RATE: ${winRateLabel}`;
+const meta = `${wins.length} FIRST-PLACE FINISHES · ${fmtCashFull(totalPrize)} IN PRIZES`;
 ---
 
 <section class="sec" id="trophies" aria-labelledby="trophies-heading">
   <div class="wrap">
-    <SectionHeader
-      num="01"
-      kicker="TROPHY CASE"
-      title="Six wins.<br/>No moral victories."
-      meta={meta}
-      id="trophies-heading"
-    />
+    <SectionHeader title="Trophy Case" meta={meta} id="trophies-heading" />
 
     <div class="trophy-grid">
       {

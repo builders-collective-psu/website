@@ -1,0 +1,39 @@
+{
+  "intro": "ENTI is Penn State's intercollege minor in Entrepreneurship and Innovation, run out of the College of Engineering's School of Engineering Design and Innovation. It is open to every major. We build the projects; ENTI is where that work turns into credits, and where a weekend hack gets treated like the start of a venture.",
+  "reasons": [
+    "The coursework is the thing we already do on weekends — customer research, prototypes, pitching — with a grade attached.",
+    "Open to all ten colleges, so the whole team can take it, not just the engineers.",
+    "Finish the sequence and you leave with a minor or a certificate on your transcript, not only a repo."
+  ],
+  "tracks": [
+    {
+      "id": "minor",
+      "kicker": "MINOR",
+      "name": "Entrepreneurship & Innovation",
+      "credits": "9 core + 9–10.5 cluster credits",
+      "summary": "Three core courses, then three more from one of ten concentration clusters. Engineering students usually take the Product Innovation cluster.",
+      "courses": [
+        "MGMT 215 — Entrepreneurial Mindset",
+        "ENGR 310 — Entrepreneurial Leadership",
+        "ENGR 425 — New Venture Creation"
+      ]
+    },
+    {
+      "id": "certificate",
+      "kicker": "CERTIFICATE",
+      "name": "Product Innovation",
+      "credits": "3 courses",
+      "summary": "The shorter route. One required course plus two from the Product Innovation list — worth taking if the full minor does not fit your schedule.",
+      "courses": [
+        "ENGR 411 — Business Fundamentals for Entrepreneurs",
+        "ENGR 407 — Technology-Based Entrepreneurship",
+        "ENGR 415 — Technology Launch for Entrepreneurs"
+      ]
+    }
+  ],
+  "email": "eship@engr.psu.edu",
+  "links": [
+    { "label": "ENTI minor — CPSSE", "href": "https://cpsse.psu.edu/enti" },
+    { "label": "Engineering Entrepreneurship — SEDI", "href": "https://www.sedi.psu.edu/eship/undergraduate/academics.aspx" }
+  ]
+}

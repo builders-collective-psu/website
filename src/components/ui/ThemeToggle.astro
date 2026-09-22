@@ -1,0 +1,91 @@
+---
+/* Renders in the light state; the inline script in Base.astro has already set
+   data-theme on <html>, so the label is corrected before first paint. */
+---
+
+<button id="theme-toggle" type="button" class="theme-btn font-mono upper" aria-label="Switch to dark theme">
+  <span class="glyph" aria-hidden="true">◐</span>
+  <span class="label">DARK</span>
+</button>
+
+<style>
+  .theme-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+  }
+
+  .theme-btn:hover,
+  .theme-btn:focus-visible {
+    background: var(--ink);
+    color: var(--paper);
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .glyph {
+    font-size: 12px;
+    line-height: 1;
+  }
+</style>
+
+<script>
+  const KEY = "theme";
+  const root = document.documentElement;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const button = document.getElementById("theme-toggle");
+  const label = button?.querySelector(".label");
+  const glyph = button?.querySelector(".glyph");
+
+  const BAR = { light: "#F4F1EA", dark: "#0B1220" };
+
+  function stored(): string | null {
+    try {
+      return localStorage.getItem(KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  function apply(theme: "light" | "dark") {
+    root.dataset.theme = theme;
+    meta?.setAttribute("content", BAR[theme]);
+    if (button && label && glyph) {
+      const next = theme === "dark" ? "light" : "dark";
+      label.textContent = next.toUpperCase();
+      glyph.textContent = theme === "dark" ? "◑" : "◐";
+      button.setAttribute("aria-label", `Switch to ${next} theme`);
+    }
+  }
+
+  const systemTheme = () => (media.matches ? "dark" : "light");
+
+  apply((stored() as "light" | "dark" | null) ?? systemTheme());
+
+  button?.addEventListener("click", () => {
+    const next = root.dataset.theme === "dark" ? "light" : "dark";
+    try {
+      // Matching the device again means we stop overriding it.
+      if (next === systemTheme()) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, next);
+    } catch {
+      /* storage unavailable — the choice just won't persist */
+    }
+    apply(next);
+  });
+
+  media.addEventListener("change", () => {
+    if (!stored()) apply(systemTheme());
+  });
+</script>

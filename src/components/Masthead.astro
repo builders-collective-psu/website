@@ -1,8 +1,8 @@
 ---
+import ThemeToggle from "./ui/ThemeToggle.astro";
+
 interface SiteData {
   name: string;
-  volume: string;
-  issue: string;
   established: string;
   nav: { label: string; href: string }[];
 }
@@ -16,27 +16,29 @@ interface Props {
   stats: StatsData;
 }
 
-const { site, stats } = Astro.props;
-const next = stats.nextEvent;
+const { site } = Astro.props;
+// Uncomment alongside the next-event pill below.
+// const next = Astro.props.stats.nextEvent;
 ---
 
 <header class="masthead rule-b" aria-label="Site header">
   <div class="wrap row">
-    <div class="mast-meta font-mono upper">
-      <span>{site.volume}</span>
-      <span>{site.issue}</span>
-      <span>EST. {site.established}</span>
-    </div>
+    <a class="wordmark upper" href="/">
+      {site.name}
+      <span class="est font-mono">EST. {site.established}</span>
+    </a>
 
-    <div class="mast-status">
-      <span
-        class="pill font-mono upper"
-        aria-label={`Next build: ${next.name} in ${next.daysOut} days`}
-      >
-        <span class="dot blink" aria-hidden="true"></span>
-        NEXT BUILD: {next.name.toUpperCase()} · {next.daysOut} DAYS
-      </span>
-    </div>
+    {/* Next-event pill — re-enable with the `next` const above.
+    <span
+      class="pill font-mono upper"
+      aria-label={`Next event: ${next.name} in ${next.daysOut} days`}
+    >
+      <span class="dot" aria-hidden="true"></span>
+      NEXT: {next.name.toUpperCase()} · {next.daysOut} DAYS
+    </span>
+    */}
+
+    <ThemeToggle />
 
     <nav class="nav font-mono upper" aria-label="Main navigation">
       {site.nav.map((item) => <a href={item.href}>{item.label}</a>)}
@@ -57,14 +59,20 @@ const next = stats.nextEvent;
     flex-wrap: wrap;
   }
 
-  .mast-meta {
-    display: flex;
-    gap: 24px;
-    font-size: 12px;
-    letter-spacing: 0.08em;
+  .wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
   }
-
-  .mast-status { display: flex; align-items: center; }
+  .wordmark .est {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
 
   .pill {
     display: inline-flex;
@@ -83,14 +91,6 @@ const next = stats.nextEvent;
     background: var(--accent);
     border-radius: 999px;
     display: inline-block;
-  }
-
-  .blink {
-    animation: blink 1.4s steps(2, end) infinite;
-  }
-
-  @keyframes blink {
-    50% { opacity: 0.25; }
   }
 
   .nav {
@@ -113,8 +113,7 @@ const next = stats.nextEvent;
 
   @media (max-width: 720px) {
     .row { gap: 12px; }
-    .mast-meta { font-size: 11px; gap: 14px; }
     .nav { gap: 18px; font-size: 11px; }
-    .mast-status { order: 3; width: 100%; }
+    .pill { order: 3; }
   }
 </style>
