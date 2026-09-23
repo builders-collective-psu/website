@@ -5,9 +5,8 @@ interface SiteData {
   domain: string;
   email: string;
   social: {
+    linkedin?: string;
     github?: string;
-    twitter?: string;
-    instagram?: string;
   };
 }
 
@@ -27,7 +26,9 @@ const year = new Date().getFullYear();
     <span class="links">
       <a href={`https://${site.domain}`}>{site.domain}</a>
       <span aria-hidden="true">·</span>
-      {site.social.twitter && <a href={site.social.twitter}>@builderscollective</a>}
+      {site.social.linkedin && (
+        <a href={site.social.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      )}
       <span aria-hidden="true">·</span>
       <a href={`mailto:${site.email}`}>{site.email}</a>
     </span>

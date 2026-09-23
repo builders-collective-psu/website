@@ -3,8 +3,9 @@
   "builderApply": "https://forms.gle/REPLACE-WITH-REAL-FORM",
   "builderHeadline": "You ship. We pay travel.",
   "builderCopy": "No application rounds. Send us a repo, a design file, or anything you have built, and we will get back to you.",
-  "sponsorHeadline": "$14k funded. $31k won.",
   "sponsorCopy": "Department funding covers travel and registration. In return: 38 shipped projects, six first-place finishes, and a standing invitation to recruit from the team.",
-  "sponsorEmail": "hello@builders.psu.edu",
-  "sponsorDeck": "/decks/sponsor-26.pdf"
+  "sponsorEmail": "hello@psu.builders",
+  "sponsorDeck": "/decks/sponsor-26.pdf",
+  "sponsorHeadlinePrefix": "$14k funded.",
+  "sponsorHeadlineSuffix": "won."
 }

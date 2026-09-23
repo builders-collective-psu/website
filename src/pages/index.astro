@@ -6,6 +6,8 @@ import WhyEnti from "@components/WhyEnti.astro";
 import HackathonLog from "@components/HackathonLog.astro";
 import Team from "@components/Team.astro";
 import ApplySponsor from "@components/ApplySponsor.astro";
+import LiveStats from "@components/LiveStats.astro";
+import RecapFeed from "@components/RecapFeed.astro";
 
 import stats from "@data/stats.json";
 import trophies from "@data/trophies.json";
@@ -19,7 +21,9 @@ import apply from "@data/apply.json";
   <Hero stats={stats} />
   <TrophyCase trophies={trophies} />
   <WhyEnti enti={enti} />
+  <RecapFeed />
   <HackathonLog log={log} />
   <Team team={team} />
   <ApplySponsor apply={apply} />
+  <LiveStats />
 </Base>

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://builders.databunker.uk/sitemap-index.xml
+Sitemap: https://psu.builders/sitemap-index.xml

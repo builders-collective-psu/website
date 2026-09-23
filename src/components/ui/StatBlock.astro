@@ -4,14 +4,20 @@ interface Props {
   value: string | number;
   caption?: string;
   accent?: boolean;
+  /**
+   * Key in the /api/stats.json payload. When set, the rendered figure is a
+   * placeholder that the live-stats script replaces once the platform
+   * responds. Without it the value is simply static.
+   */
+  field?: string;
 }
 
-const { label, value, caption, accent = false } = Astro.props;
+const { label, value, caption, accent = false, field } = Astro.props;
 ---
 
 <div class="stat">
   <div class="k font-mono upper">{label}</div>
-  <div class:list={["v", accent && "accent"]}>{value}</div>
+  <div class:list={["v", accent && "accent"]} data-stat={field} data-stat-format="pad">{value}</div>
   {caption && <div class="s font-mono upper">{caption}</div>}
 </div>
 
@@ -32,6 +38,20 @@ const { label, value, caption, accent = false } = Astro.props;
     font-variant-numeric: tabular-nums;
   }
   .v.accent { color: var(--accent); }
+
+  /* While a live figure is in flight the placeholder dims slightly, then
+     settles when the real number lands. Never a spinner — the static number
+     is already correct enough to read. */
+  .v[data-stat] {
+    transition: opacity var(--dur-normal) ease;
+  }
+  .v[data-stat][data-state="loading"] {
+    opacity: 0.45;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .v[data-stat] { transition: none; }
+  }
   .s {
     font-size: 12px;
     margin-top: 6px;

@@ -7,7 +7,8 @@ interface ApplyData {
   builderApply: string;
   builderHeadline: string;
   builderCopy: string;
-  sponsorHeadline: string;
+  sponsorHeadlinePrefix: string;
+  sponsorHeadlineSuffix: string;
   sponsorCopy: string;
   sponsorEmail: string;
   sponsorDeck: string;
@@ -37,7 +38,10 @@ const meta = `APPLICATIONS: ${apply.decisions.toUpperCase()}`;
 
       <div class="col col--sponsors" id="sponsor">
         <div class="kicker font-mono upper">SPONSORS</div>
-        <h3 class="head">{apply.sponsorHeadline}</h3>
+        <h3 class="head">
+          {apply.sponsorHeadlinePrefix}{" "}
+          <span data-stat="prizeTotal">$31,000</span> {apply.sponsorHeadlineSuffix}
+        </h3>
         <p class="copy">{apply.sponsorCopy}</p>
         <div class="ctas">
           <Button href={apply.sponsorDeck} arrow="external" class="btn--solid">Sponsor Deck</Button>

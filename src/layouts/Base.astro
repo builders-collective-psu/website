@@ -1,5 +1,7 @@
 ---
 import "@styles/global.css";
+import Gate from "@components/Gate.astro";
+import { GATE_ENABLED, gateHashes } from "@lib/gate";
 import Masthead from "@components/Masthead.astro";
 import Footer from "@components/Footer.astro";
 import site from "@data/site.json";
@@ -9,15 +11,20 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  ogImageAlt?: string;
 }
 
 const {
   title = `${site.name} — ${site.tagline}`,
-  description = "Department-funded team of Penn State engineers and designers who travel to hackathons and build things.",
-  ogImage = "/og.svg",
+  description = "An elite team of Penn State engineers and designers who build for hackathons.",
+  // PNG, not SVG: Discord, Slack and iMessage will not render an SVG preview.
+  ogImage = "/og.png",
+  ogImageAlt = `${site.name} — ${site.tagline}`,
 } = Astro.props;
 
-const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://builders.databunker.uk");
+const gate = GATE_ENABLED ? gateHashes() : null;
+
+const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://psu.builders");
 ---
 
 <!doctype html>
@@ -27,6 +34,18 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://builders.da
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#F4F1EA" />
+
+    {gate && (
+      <script is:inline define:vars={{ sha: gate.sha }}>
+        (function () {
+          var unlocked = false;
+          try {
+            unlocked = localStorage.getItem("site-gate") === sha;
+          } catch (e) {}
+          if (!unlocked) document.documentElement.setAttribute("data-locked", "");
+        })();
+      </script>
+    )}
 
     {/* Set the theme before first paint so there is no flash of the wrong one. */}
     <script is:inline>
@@ -52,17 +71,29 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://builders.da
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical.toString()} />
 
+    {/* Open Graph — what Discord, Slack, iMessage and Facebook read. Discord
+        needs an absolute image URL, real pixel dimensions to avoid a
+        letterboxed thumbnail, and a raster format. */}
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical.toString()} />
-    <meta property="og:image" content={new URL(ogImage, canonical).toString()} />
     <meta property="og:site_name" content={site.name} />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content={new URL(ogImage, canonical).toString()} />
+    <meta property="og:image:secure_url" content={new URL(ogImage, canonical).toString()} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
 
+    {/* Discord also honours twitter:card — summary_large_image is what makes
+        the preview full-width rather than a thumbnail beside the text. */}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={new URL(ogImage, canonical).toString()} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.svg" sizes="any" />
@@ -95,6 +126,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://builders.da
       Skip to content
     </a>
 
+    {gate && <Gate />}
+
     <Masthead site={site} stats={stats} />
 
     <main id="main">
@@ -106,6 +139,15 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://builders.da
 </html>
 
 <style is:global>
+  /* While locked, nothing but the gate renders. A curtain over an unfinished
+     site — the markup is still in the response, so this is not security. */
+  html[data-locked] body > *:not([data-gate]) {
+    display: none !important;
+  }
+  html[data-locked] body {
+    overflow: hidden;
+  }
+
   /* Visually-hidden helper for screen readers (and skip link) */
   .sr-only {
     position: absolute;

@@ -1,0 +1,61 @@
+---
+/**
+ * Fills in any [data-stat] figure on the page from /api/stats.json after the
+ * page has painted.
+ *
+ * The markup ships with the last known numbers already in place, so the page
+ * is complete and readable before this runs, and stays correct if the request
+ * fails, the endpoint is not deployed yet, or JavaScript is off. Nothing here
+ * talks to the platform directly — the API key lives only in the server
+ * endpoint this calls.
+ */
+interface Props {
+  /** Same-origin endpoint. Never a platform URL: that would expose the key. */
+  endpoint?: string;
+}
+
+const { endpoint = "/api/stats" } = Astro.props;
+---
+
+<script is:inline define:vars={{ endpoint }}>
+  (function () {
+    const targets = document.querySelectorAll("[data-stat]");
+    if (!targets.length) return;
+
+    targets.forEach((el) => el.setAttribute("data-state", "loading"));
+
+    const settle = (el, text) => {
+      if (typeof text === "string" && text.length) el.textContent = text;
+      el.removeAttribute("data-state");
+    };
+
+    // Only the big hero figures are zero-padded (they read as "06"); the same
+    // number inline in a sentence must stay "6". Elements opt in with
+    // data-stat-format="pad". Pre-formatted strings from the API pass through.
+    const format = (value, pad) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === "string") return value;
+      if (typeof value !== "number" || !Number.isFinite(value)) return null;
+      if (pad && value < 10) return String(value).padStart(2, "0");
+      return value.toLocaleString("en-US");
+    };
+
+    fetch(endpoint, { headers: { accept: "application/json" } })
+      .then((response) => {
+        if (!response.ok) throw new Error(`stats HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        targets.forEach((el) => {
+          const key = el.getAttribute("data-stat");
+          const pad = el.getAttribute("data-stat-format") === "pad";
+          settle(el, format(key ? data[key] : null, pad));
+        });
+      })
+      .catch(() => {
+        // Keep whatever was rendered at build time. A stale-but-real number
+        // beats an error state in a hero.
+        targets.forEach((el) => el.removeAttribute("data-state"));
+      });
+  })();
+</script>

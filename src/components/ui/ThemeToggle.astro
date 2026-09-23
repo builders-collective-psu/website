@@ -3,39 +3,33 @@
    data-theme on <html>, so the label is corrected before first paint. */
 ---
 
-<button id="theme-toggle" type="button" class="theme-btn font-mono upper" aria-label="Switch to dark theme">
-  <span class="glyph" aria-hidden="true">◐</span>
-  <span class="label">DARK</span>
+<button
+  id="theme-toggle"
+  type="button"
+  class="icon-btn theme-btn"
+  aria-label="Switch to dark theme"
+  title="Switch to dark theme"
+>
+  <span class="label sr-only">Dark</span>
+  <svg class="glyph" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.4" />
+    <path d="M8 1.7a6.3 6.3 0 0 1 0 12.6z" fill="currentColor" />
+  </svg>
 </button>
 
 <style>
-  .theme-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 10px;
-    border: 1px solid var(--ink);
-    background: var(--paper);
-    color: var(--ink);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    line-height: 1.4;
-    cursor: pointer;
-    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+  /* The filled half flips to show which theme a click will switch to. */
+  .theme-btn .glyph {
+    transition: transform var(--dur-normal) var(--ease-out);
+  }
+  .theme-btn[data-mode="dark"] .glyph {
+    transform: rotate(180deg);
   }
 
-  .theme-btn:hover,
-  .theme-btn:focus-visible {
-    background: var(--ink);
-    color: var(--paper);
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-  }
-
-  .glyph {
-    font-size: 12px;
-    line-height: 1;
+  @media (prefers-reduced-motion: reduce) {
+    .theme-btn .glyph {
+      transition: none;
+    }
   }
 </style>
 
@@ -46,7 +40,6 @@
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   const button = document.getElementById("theme-toggle");
   const label = button?.querySelector(".label");
-  const glyph = button?.querySelector(".glyph");
 
   const BAR = { light: "#F4F1EA", dark: "#0B1220" };
 
@@ -61,15 +54,49 @@
   function apply(theme: "light" | "dark") {
     root.dataset.theme = theme;
     meta?.setAttribute("content", BAR[theme]);
-    if (button && label && glyph) {
+    if (button && label) {
       const next = theme === "dark" ? "light" : "dark";
-      label.textContent = next.toUpperCase();
-      glyph.textContent = theme === "dark" ? "◑" : "◐";
+      button.dataset.mode = theme;
+      label.textContent = next === "dark" ? "Dark" : "Light";
       button.setAttribute("aria-label", `Switch to ${next} theme`);
+      button.setAttribute("title", `Switch to ${next} theme`);
     }
   }
 
   const systemTheme = () => (media.matches ? "dark" : "light");
+
+  const wantsMotion = () =>
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /**
+   * Swaps the theme with a wipe across the page. View Transitions snapshot the
+   * whole document, so the background and every control travel together rather
+   * than each animating on its own clock.
+   */
+  function switchTo(theme: "light" | "dark") {
+    if (!wantsMotion()) {
+      apply(theme);
+      return;
+    }
+
+    // Going dark sweeps left to right; coming back sweeps the other way.
+    root.dataset.sweep = theme === "dark" ? "ltr" : "rtl";
+
+    const startViewTransition = document.startViewTransition?.bind(document);
+    if (!startViewTransition) {
+      // No View Transitions here — cross-fade the colours instead.
+      root.classList.add("theme-transition");
+      apply(theme);
+      window.setTimeout(() => root.classList.remove("theme-transition"), 400);
+      delete root.dataset.sweep;
+      return;
+    }
+
+    const transition = startViewTransition(() => apply(theme));
+    transition.finished.finally(() => {
+      delete root.dataset.sweep;
+    });
+  }
 
   apply((stored() as "light" | "dark" | null) ?? systemTheme());
 
@@ -82,10 +109,10 @@
     } catch {
       /* storage unavailable — the choice just won't persist */
     }
-    apply(next);
+    switchTo(next);
   });
 
   media.addEventListener("change", () => {
-    if (!stored()) apply(systemTheme());
+    if (!stored()) switchTo(systemTheme());
   });
 </script>

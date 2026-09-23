@@ -31,7 +31,9 @@ const fmtCash = (n: number) =>
 const fmtCashFull = (n: number) =>
   `$${n.toLocaleString("en-US")}`;
 
-const meta = `${wins.length} FIRST-PLACE FINISHES · ${fmtCashFull(totalPrize)} IN PRIZES`;
+// The figures are live targets: /api/stats overwrites them when it answers,
+// otherwise the build-time totals from trophies.json stand.
+const meta = `<span data-stat="wins">${wins.length}</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal">${fmtCashFull(totalPrize)}</span> IN PRIZES`;
 ---
 
 <section class="sec" id="trophies" aria-labelledby="trophies-heading">

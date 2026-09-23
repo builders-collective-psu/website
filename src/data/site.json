@@ -3,12 +3,11 @@
   "tagline": "Penn State University",
   "established": "2022",
   "location": "University Park, PA",
-  "domain": "builders.databunker.uk",
-  "email": "hello@builders.psu.edu",
+  "domain": "psu.builders",
+  "email": "hello@psu.builders",
   "social": {
-    "github": "https://github.com/builders-collective",
-    "twitter": "https://twitter.com/builderscollective",
-    "instagram": "https://instagram.com/builderscollective"
+    "linkedin": "https://www.linkedin.com/company/builder-s-collective-at-pennstate/",
+    "github": "https://github.com/builders-collective-psu"
   },
   "nav": [
     {

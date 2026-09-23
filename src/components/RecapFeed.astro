@@ -1,0 +1,245 @@
+---
+import SectionHeader from "./ui/SectionHeader.astro";
+
+/**
+ * Recap cards and the photo gallery, both filled from /api/recaps after the
+ * page paints. One fetch feeds both grids.
+ *
+ * Until it resolves — and permanently, on a static host where /api/recaps
+ * does not exist — both sections stay hidden rather than showing empty
+ * frames. Nothing below them depends on their height.
+ */
+interface Props {
+  endpoint?: string;
+}
+
+const { endpoint = "/api/recaps" } = Astro.props;
+---
+
+<section class="sec" id="recaps" aria-labelledby="recaps-heading" hidden data-recaps>
+  <div class="wrap">
+    <SectionHeader title="From the Field" meta="LIVE FROM THE ATLAS" id="recaps-heading" />
+    <div class="cards" data-recap-cards></div>
+  </div>
+</section>
+
+<section class="sec sec--gallery" id="gallery" aria-labelledby="gallery-heading" hidden data-gallery>
+  <div class="wrap">
+    <SectionHeader title="Gallery" id="gallery-heading" />
+    <div class="photos" data-gallery-grid></div>
+  </div>
+</section>
+
+<script is:inline define:vars={{ endpoint }}>
+  (function () {
+    const recapSection = document.querySelector("[data-recaps]");
+    const gallerySection = document.querySelector("[data-gallery]");
+    const cardGrid = document.querySelector("[data-recap-cards]");
+    const photoGrid = document.querySelector("[data-gallery-grid]");
+    if (!cardGrid || !photoGrid) return;
+
+    const el = (tag, className, text) => {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined && text !== null) node.textContent = String(text);
+      return node;
+    };
+
+    const money = (cents) =>
+      typeof cents === "number" && cents > 0
+        ? `$${Math.round(cents / 100).toLocaleString("en-US")}`
+        : null;
+
+    function renderCard(card) {
+      const article = el("article", "card");
+
+      const top = el("div", "card-top font-mono upper");
+      top.appendChild(el("span", null, card.event));
+      const result = card.won ? "★ WIN" : card.placement || "SHIPPED";
+      top.appendChild(el("span", "result", result));
+      article.appendChild(top);
+
+      if (card.photo) {
+        const figure = el("div", "card-photo");
+        const img = el("img");
+        img.src = card.photo;
+        img.alt = `${card.event} — ${card.team || card.people.map((p) => p.name).join(", ")}`;
+        img.loading = "lazy";
+        figure.appendChild(img);
+        article.appendChild(figure);
+      }
+
+      const body = el("div", "card-body");
+      if (card.prizeName || card.track) {
+        body.appendChild(el("h3", "card-prize", card.prizeName || card.track));
+      }
+      const prize = money(card.prizeCents);
+      if (prize) body.appendChild(el("div", "card-cash font-mono", `↳ ${prize}`));
+
+      const names = card.people.map((person) => person.name).join(" · ");
+      if (names) body.appendChild(el("div", "card-people font-mono", names));
+
+      const links = el("div", "card-links font-mono upper");
+      [
+        ["GitHub ↗", card.github],
+        ["Devpost ↗", card.devpost],
+      ].forEach(([label, href]) => {
+        if (!href) return;
+        const anchor = el("a", null, label);
+        anchor.href = href;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        links.appendChild(anchor);
+      });
+      if (links.childNodes.length) body.appendChild(links);
+
+      article.appendChild(body);
+      return article;
+    }
+
+    function renderPhoto(photo) {
+      const figure = el("figure", "photo");
+      const img = el("img");
+      img.src = photo.url;
+      img.alt = photo.event;
+      img.loading = "lazy";
+      figure.appendChild(img);
+      figure.appendChild(el("figcaption", "font-mono upper", photo.event));
+      return figure;
+    }
+
+    fetch(endpoint, { headers: { accept: "application/json" } })
+      .then((response) => {
+        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        const cards = Array.isArray(data.cards) ? data.cards : [];
+        const photos = Array.isArray(data.photos) ? data.photos : [];
+
+        if (cards.length) {
+          cards.forEach((card) => cardGrid.appendChild(renderCard(card)));
+          recapSection?.removeAttribute("hidden");
+        }
+        if (photos.length) {
+          photos.forEach((photo) => photoGrid.appendChild(renderPhoto(photo)));
+          gallerySection?.removeAttribute("hidden");
+        }
+      })
+      .catch(() => {
+        // Endpoint missing or upstream down — leave both sections hidden.
+      });
+  })();
+</script>
+
+<style>
+  .sec {
+    padding: 72px 0;
+    border-bottom: 1.5px solid var(--ink);
+  }
+  .sec[hidden] { display: none; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1.5px solid var(--ink);
+    border-left: 1.5px solid var(--ink);
+  }
+
+  .cards :global(.card) {
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    transition: background var(--dur-normal) ease;
+  }
+  .cards :global(.card:hover) { background: var(--paper-2); }
+
+  .cards :global(.card-top) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+  .cards :global(.card-top .result) { color: var(--accent); white-space: nowrap; }
+
+  .cards :global(.card-photo) {
+    aspect-ratio: 4 / 3;
+    border-bottom: 1px solid var(--ink);
+    overflow: hidden;
+  }
+  .cards :global(.card-photo img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cards :global(.card-body) { padding: 14px; display: grid; gap: 6px; }
+  .cards :global(.card-prize) {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin: 0;
+  }
+  .cards :global(.card-cash) { font-size: 12px; color: var(--accent); font-weight: 700; }
+  .cards :global(.card-people) { font-size: 11px; color: var(--muted); }
+  .cards :global(.card-links) {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .cards :global(.card-links a) {
+    border-bottom: 1px solid currentColor;
+    transition: color var(--dur-fast) ease;
+  }
+  .cards :global(.card-links a:hover),
+  .cards :global(.card-links a:focus-visible) {
+    color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .photos {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-top: 1.5px solid var(--ink);
+    border-left: 1.5px solid var(--ink);
+  }
+  .photos :global(.photo) {
+    margin: 0;
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+  }
+  .photos :global(.photo img) {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+  }
+  .photos :global(figcaption) {
+    padding: 8px 10px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-top: 1px solid var(--hairline);
+  }
+
+  @media (max-width: 1024px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .photos { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .cards { grid-template-columns: 1fr; }
+    .photos { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>

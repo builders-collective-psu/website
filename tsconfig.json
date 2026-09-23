@@ -9,6 +9,7 @@
       "@components/*": ["src/components/*"],
       "@data/*": ["src/data/*"],
       "@layouts/*": ["src/layouts/*"],
+      "@lib/*": ["src/lib/*"],
       "@styles/*": ["src/styles/*"]
     },
     "resolveJsonModule": true,

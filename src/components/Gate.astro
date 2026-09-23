@@ -1,0 +1,165 @@
+---
+import { gateHashes } from "@lib/gate";
+
+const { sha, djb } = gateHashes();
+---
+
+<div class="gate" data-gate role="dialog" aria-modal="true" aria-labelledby="gate-heading">
+  <form class="panel" data-gate-form autocomplete="off">
+    <p class="kicker font-mono upper">Builders Collective</p>
+    <h1 id="gate-heading" class="display upper">Not<br />open<br />yet.</h1>
+    <p class="copy">This site is still being built. Enter the password to look around.</p>
+
+    <div class="row">
+      <label class="sr-only" for="gate-input">Password</label>
+      <input
+        id="gate-input"
+        class="input font-mono"
+        type="password"
+        name="password"
+        placeholder="PASSWORD"
+        autocomplete="current-password"
+        required
+      />
+      <button class="go font-mono upper" type="submit">Enter</button>
+    </div>
+
+    <p class="error font-mono upper" data-gate-error hidden>Wrong password.</p>
+  </form>
+</div>
+
+<script is:inline define:vars={{ sha, djb }}>
+  (function () {
+    const KEY = "site-gate";
+    const root = document.documentElement;
+    const form = document.querySelector("[data-gate-form]");
+    const input = document.getElementById("gate-input");
+    const error = document.querySelector("[data-gate-error]");
+
+    async function hash(value) {
+      if (window.crypto?.subtle && window.isSecureContext) {
+        const bytes = new TextEncoder().encode(value);
+        const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+        return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      }
+      // Plain http — fall back to the weaker hash. Same curtain either way.
+      let h = 5381;
+      for (let i = 0; i < value.length; i += 1) h = ((h << 5) + h + value.charCodeAt(i)) >>> 0;
+      return h.toString(16);
+    }
+
+    function unlock() {
+      try {
+        localStorage.setItem(KEY, sha);
+      } catch {
+        /* private window — this session only */
+      }
+      root.removeAttribute("data-locked");
+      document.querySelector("[data-gate]")?.remove();
+    }
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const attempt = await hash(input.value);
+      if (attempt === sha || attempt === djb) {
+        unlock();
+        return;
+      }
+      error?.removeAttribute("hidden");
+      input.value = "";
+      input.focus();
+    });
+
+    input?.focus();
+  })();
+</script>
+
+<style>
+  .gate {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .panel {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .kicker {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  h1 {
+    font-size: clamp(56px, 12vw, 96px);
+    font-weight: 700;
+    line-height: 0.88;
+    margin: 12px 0 0;
+  }
+
+  .copy {
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink-2);
+    margin: 18px 0 0;
+    max-width: 34ch;
+  }
+
+  .row {
+    display: flex;
+    gap: 0;
+    margin-top: 24px;
+  }
+
+  .input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px 14px;
+    border: 1.5px solid var(--ink);
+    border-right: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 13px;
+    letter-spacing: 0.14em;
+  }
+  .input::placeholder { color: var(--muted); }
+  .input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .go {
+    padding: 13px 20px;
+    border: 1.5px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+  }
+  .go:hover,
+  .go:focus-visible {
+    background: var(--accent);
+    border-color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .error {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin: 14px 0 0;
+  }
+  .error[hidden] { display: none; }
+</style>
