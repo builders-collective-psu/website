@@ -1,7 +1,6 @@
 ---
 import SectionHeader from "./ui/SectionHeader.astro";
 import Button from "./ui/Button.astro";
-import { REAL_DATA } from "@lib/flags";
 
 interface ApplyData {
   decisions: string;
@@ -41,8 +40,7 @@ const meta = `APPLICATIONS: ${apply.decisions.toUpperCase()}`;
         <div class="kicker font-mono upper">SPONSORS</div>
         <h3 class="head">
           {apply.sponsorHeadlinePrefix}{" "}
-          <span data-stat={REAL_DATA ? "prizeTotal" : undefined}>$31,000</span>{" "}
-          {apply.sponsorHeadlineSuffix}
+          <span data-stat="prizeTotal">$31,000</span> {apply.sponsorHeadlineSuffix}
         </h3>
         <p class="copy">{apply.sponsorCopy}</p>
         <div class="ctas">

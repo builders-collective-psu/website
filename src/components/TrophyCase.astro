@@ -1,65 +1,32 @@
 ---
 import SectionHeader from "./ui/SectionHeader.astro";
-import { REAL_DATA } from "@lib/flags";
-import trophies from "@data/trophies.json";
 
 /**
- * Wins.
+ * Wins, straight from the platform: every recap logged with won = true.
  *
- * With REAL_DATA set, every recap logged on the platform with won = true,
- * fetched after paint; the section stays hidden until real wins arrive,
- * because inventing wins when the API is down is worse than showing nothing.
- *
- * Without it, the checked-in mock trophies render at build time and nothing
- * is fetched.
+ * There is no build-time fallback. Inventing wins when the API is down is
+ * worse than showing nothing, so the section stays hidden until real wins
+ * arrive.
  */
 interface Props {
   endpoint?: string;
 }
 
 const { endpoint = "/api/recaps" } = Astro.props;
-
-const mockWins = trophies
-  .filter((t) => t.place === 1)
-  .sort((a, b) => (a.date < b.date ? 1 : -1));
-
-const mockPrize = mockWins.reduce((sum, t) => sum + (t.prize?.cash ?? 0), 0);
-const fmtCash = (n: number) =>
-  n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
-
-const meta = REAL_DATA
-  ? '<span data-stat="wins">—</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal">—</span> IN PRIZES'
-  : `${mockWins.length} FIRST-PLACE FINISHES · $${mockPrize.toLocaleString("en-US")} IN PRIZES`;
 ---
 
-<section class="sec" id="trophies" aria-labelledby="trophies-heading" hidden={REAL_DATA} data-trophies>
+<section class="sec" id="trophies" aria-labelledby="trophies-heading" hidden data-trophies>
   <div class="wrap">
-    <SectionHeader title="Trophy Case" meta={meta} id="trophies-heading" />
-
-    <div class="trophy-grid" data-trophy-grid>
-      {
-        !REAL_DATA &&
-          mockWins.map((t) => (
-            <article class="trophy">
-              <div class="t-date font-mono">{t.dateShort}</div>
-              <div class="t-body">
-                <h3>{t.event}</h3>
-                <div class="where font-mono">{t.where} · {t.track}</div>
-                <p>{t.summary}</p>
-                <div class="t-prize font-mono">
-                  ↳ {fmtCash(t.prize.cash)} + {t.prize.extras}
-                </div>
-              </div>
-              <div class="t-tag font-mono upper">★ 1ST</div>
-            </article>
-          ))
-      }
-    </div>
+    <SectionHeader
+      title="Trophy Case"
+      meta='<span data-stat="wins">—</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal">—</span> IN PRIZES'
+      id="trophies-heading"
+    />
+    <div class="trophy-grid" data-trophy-grid></div>
   </div>
 </section>
 
-{REAL_DATA && (
-  <script is:inline define:vars={{ endpoint }}>
+<script is:inline define:vars={{ endpoint }}>
   (function () {
     const section = document.querySelector("[data-trophies]");
     const grid = document.querySelector("[data-trophy-grid]");
@@ -124,8 +91,7 @@ const meta = REAL_DATA
         /* endpoint missing or upstream down — section stays hidden */
       });
   })();
-  </script>
-)}
+</script>
 
 <style>
   .sec {
