@@ -1,4 +1,5 @@
 ---
+import { REAL_DATA } from "@lib/flags";
 import SectionHeader from "./ui/SectionHeader.astro";
 
 /**
@@ -16,6 +17,8 @@ interface Props {
 const { endpoint = "/api/recaps" } = Astro.props;
 ---
 
+{REAL_DATA && (
+  <>
 <section class="sec" id="recaps" aria-labelledby="recaps-heading" hidden data-recaps>
   <div class="wrap">
     <SectionHeader title="From the Field" meta="LIVE FROM THE ATLAS" id="recaps-heading" />
@@ -134,6 +137,9 @@ const { endpoint = "/api/recaps" } = Astro.props;
       });
   })();
 </script>
+  </>
+)}
+
 
 <style>
   .sec {

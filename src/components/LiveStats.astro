@@ -1,4 +1,5 @@
 ---
+import { REAL_DATA } from "@lib/flags";
 /**
  * Fills in any [data-stat] figure on the page from /api/stats.json after the
  * page has painted.
@@ -17,7 +18,8 @@ interface Props {
 const { endpoint = "/api/stats" } = Astro.props;
 ---
 
-<script is:inline define:vars={{ endpoint }}>
+{REAL_DATA && (
+  <script is:inline define:vars={{ endpoint }}>
   (function () {
     const targets = document.querySelectorAll("[data-stat]");
     if (!targets.length) return;
@@ -58,4 +60,5 @@ const { endpoint = "/api/stats" } = Astro.props;
         targets.forEach((el) => el.removeAttribute("data-state"));
       });
   })();
-</script>
+  </script>
+)}

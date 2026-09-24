@@ -1,6 +1,7 @@
 ---
 import Button from "./ui/Button.astro";
 import StatBlock from "./ui/StatBlock.astro";
+import { REAL_DATA } from "@lib/flags";
 
 interface StatsData {
   wins: number;
@@ -33,9 +34,13 @@ const pad = (n: number) => n.toString().padStart(2, "0");
         An elite team of Penn State engineers and designers who build for
         hackathons.
       </p>
-      <StatBlock label="WINS" value={pad(stats.wins)} field="wins" />
-      <StatBlock label="HACKATHONS" value={pad(stats.hackathons)} field="hackathons" />
-      <StatBlock label="SHIPPED" value={pad(stats.shipped)} field="shipped" />
+      <StatBlock label="WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
+      <StatBlock
+        label="HACKATHONS"
+        value={pad(stats.hackathons)}
+        field={REAL_DATA ? "hackathons" : undefined}
+      />
+      <StatBlock label="SHIPPED" value={pad(stats.shipped)} field={REAL_DATA ? "shipped" : undefined} />
     </div>
 
     <div class="ctas">
