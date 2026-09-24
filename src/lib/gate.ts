@@ -1,17 +1,24 @@
 import { createHash } from "node:crypto";
 
 /**
- * Soft gate for the work-in-progress site.
+ * Optional soft gate for the site.
  *
- * This is a curtain, not a lock. The page HTML is still in the response, so
- * anyone using devtools, curl, or "view source" can read it, and search
- * engines can index it. Use it to keep the unfinished site from casual
- * visitors — never to protect anything that actually matters.
+ * Off unless SITE_GATE_PASSWORD is set at build time — no password, no gate,
+ * and none of the gate's markup or script ships. Setting a password is what
+ * puts the curtain up:
  *
- * The password itself is never shipped: only these hashes are, so it is not
- * sitting in the bundle in plain text for anyone who opens the JS.
+ *   SITE_GATE_PASSWORD=somephrase npm run build
+ *
+ * It is a curtain, not a lock, even when enabled. The page HTML is still in
+ * the response, so anyone using devtools, curl or "view source" can read it,
+ * and crawlers can index it. Never put anything sensitive behind it.
+ *
+ * The password itself is never shipped: only the hashes below are, so it is
+ * not sitting in the bundle in plain text.
  */
-export const GATE_PASSWORD = process.env.SITE_GATE_PASSWORD || "builders";
+export const GATE_PASSWORD = process.env.SITE_GATE_PASSWORD || "";
+
+export const GATE_ENABLED = GATE_PASSWORD.length > 0;
 
 /** Non-cryptographic fallback for pages served over plain http, where
  *  crypto.subtle is unavailable. */
@@ -29,6 +36,3 @@ export function gateHashes() {
     djb: djb2(GATE_PASSWORD),
   };
 }
-
-/** Flip to false (or set SITE_GATE=off) to publish the site openly. */
-export const GATE_ENABLED = (process.env.SITE_GATE || "on").toLowerCase() !== "off";
