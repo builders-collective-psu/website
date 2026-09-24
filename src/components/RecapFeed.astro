@@ -108,11 +108,14 @@ const { endpoint = "/api/recaps" } = Astro.props;
       return figure;
     }
 
-    fetch(endpoint, { headers: { accept: "application/json" } })
-      .then((response) => {
+    window.__recaps =
+      window.__recaps ||
+      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
         if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
         return response.json();
-      })
+      });
+
+    window.__recaps
       .then((data) => {
         const cards = Array.isArray(data.cards) ? data.cards : [];
         const photos = Array.isArray(data.photos) ? data.photos : [];

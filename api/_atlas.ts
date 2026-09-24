@@ -11,9 +11,10 @@
  * change; only ATLAS_API_BASE needs updating when it does.
  */
 
-const DEFAULT_BASE = "https://atlas.moldycrust.pizza";
+const DEFAULT_BASE = "https://bunker.psu.builders";
 
-/** oRPC exposes its OpenAPI surface under this prefix; procedures are POSTs. */
+/** oRPC exposes its OpenAPI surface under this prefix. Each procedure now
+ *  declares its own verb and path via .route(), so read endpoints are GETs. */
 const RPC_PREFIX = "/api/rpc/api-reference";
 
 export class AtlasError extends Error {
@@ -32,28 +33,31 @@ export function atlasConfig() {
 }
 
 /**
- * Calls one oRPC procedure, e.g. call("community/feed").
+ * Calls one oRPC procedure, e.g. call("/community/feed").
  *
  * Note the platform gates everything under the OpenAPI prefix on the `admin`
  * role, and an API key inherits its owner's role — so ATLAS_API_KEY must
  * belong to an admin account for these to return anything.
  */
-export async function call<T>(procedure: string, input: unknown = {}): Promise<T> {
+export async function call<T>(
+  path: string,
+  { method = "GET", input }: { method?: string; input?: unknown } = {},
+): Promise<T> {
   const { base, key } = atlasConfig();
   if (!key) throw new AtlasError("ATLAS_API_KEY is not set", 503);
 
-  const response = await fetch(`${base}${RPC_PREFIX}/${procedure}`, {
-    method: "POST",
+  const response = await fetch(`${base}${RPC_PREFIX}${path}`, {
+    method,
     headers: {
       authorization: `Bearer ${key}`,
-      "content-type": "application/json",
       accept: "application/json",
+      ...(input ? { "content-type": "application/json" } : {}),
     },
-    body: JSON.stringify(input),
+    body: input ? JSON.stringify(input) : undefined,
   });
 
   if (!response.ok) {
-    throw new AtlasError(`${procedure} failed: HTTP ${response.status}`, response.status);
+    throw new AtlasError(`${method} ${path} failed: HTTP ${response.status}`, response.status);
   }
   return (await response.json()) as T;
 }

@@ -10,7 +10,6 @@ import LiveStats from "@components/LiveStats.astro";
 import RecapFeed from "@components/RecapFeed.astro";
 
 import stats from "@data/stats.json";
-import trophies from "@data/trophies.json";
 import enti from "@data/enti.json";
 import log from "@data/log.json";
 import team from "@data/team.json";
@@ -19,7 +18,7 @@ import apply from "@data/apply.json";
 
 <Base>
   <Hero stats={stats} />
-  <TrophyCase trophies={trophies} />
+  <TrophyCase />
   <WhyEnti enti={enti} />
   <RecapFeed />
   <HackathonLog log={log} />

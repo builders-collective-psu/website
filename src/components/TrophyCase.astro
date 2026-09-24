@@ -1,71 +1,105 @@
 ---
 import SectionHeader from "./ui/SectionHeader.astro";
 
-interface Trophy {
-  id: string;
-  date: string;
-  dateShort: string;
-  event: string;
-  where: string;
-  track: string;
-  place: number;
-  summary: string;
-  prize: { cash: number; extras: string };
-}
-
+/**
+ * Wins, straight from the platform: every recap logged with won = true.
+ *
+ * There is no build-time fallback here on purpose. The old trophies.json was
+ * placeholder data, and showing invented wins when the API is unreachable is
+ * worse than showing nothing — so the section stays hidden until real wins
+ * arrive.
+ */
 interface Props {
-  trophies: Trophy[];
-  limit?: number;
+  endpoint?: string;
 }
 
-const { trophies, limit = 6 } = Astro.props;
-
-const wins = trophies
-  .filter((t) => t.place === 1)
-  .sort((a, b) => (a.date < b.date ? 1 : -1))
-  .slice(0, limit);
-
-const totalPrize = wins.reduce((sum, t) => sum + (t.prize?.cash ?? 0), 0);
-const fmtCash = (n: number) =>
-  n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
-const fmtCashFull = (n: number) =>
-  `$${n.toLocaleString("en-US")}`;
-
-// The figures are live targets: /api/stats overwrites them when it answers,
-// otherwise the build-time totals from trophies.json stand.
-const meta = `<span data-stat="wins">${wins.length}</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal">${fmtCashFull(totalPrize)}</span> IN PRIZES`;
+const { endpoint = "/api/recaps" } = Astro.props;
 ---
 
-<section class="sec" id="trophies" aria-labelledby="trophies-heading">
+<section class="sec" id="trophies" aria-labelledby="trophies-heading" hidden data-trophies>
   <div class="wrap">
-    <SectionHeader title="Trophy Case" meta={meta} id="trophies-heading" />
-
-    <div class="trophy-grid">
-      {
-        wins.map((t) => (
-          <article class="trophy">
-            <div class="t-date font-mono">{t.dateShort}</div>
-            <div class="t-body">
-              <h3>{t.event}</h3>
-              <div class="where font-mono">{t.where} · {t.track}</div>
-              <p>{t.summary}</p>
-              <div class="t-prize font-mono">
-                ↳ {fmtCash(t.prize.cash)} + {t.prize.extras}
-              </div>
-            </div>
-            <div class="t-tag font-mono upper">★ 1ST</div>
-          </article>
-        ))
-      }
-    </div>
+    <SectionHeader
+      title="Trophy Case"
+      meta='<span data-stat="wins">—</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal">—</span> IN PRIZES'
+      id="trophies-heading"
+    />
+    <div class="trophy-grid" data-trophy-grid></div>
   </div>
 </section>
+
+<script is:inline define:vars={{ endpoint }}>
+  (function () {
+    const section = document.querySelector("[data-trophies]");
+    const grid = document.querySelector("[data-trophy-grid]");
+    if (!grid) return;
+
+    // Shared with the recap feed and gallery so the page makes one request.
+    window.__recaps =
+      window.__recaps ||
+      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
+        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
+        return response.json();
+      });
+
+    const el = (tag, className, text) => {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined && text !== null) node.textContent = String(text);
+      return node;
+    };
+
+    const shortDate = (iso) => {
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return "";
+      return `${String(date.getMonth() + 1).padStart(2, "0")} / ${String(date.getFullYear()).slice(2)}`;
+    };
+
+    const money = (cents) =>
+      typeof cents === "number" && cents > 0
+        ? `$${Math.round(cents / 100).toLocaleString("en-US")}`
+        : null;
+
+    function renderWin(win) {
+      const article = el("article", "trophy");
+      article.appendChild(el("div", "t-date font-mono", shortDate(win.createdAt)));
+
+      const body = el("div", "t-body");
+      body.appendChild(el("h3", null, win.event));
+
+      const detail = [win.track, win.team].filter(Boolean).join(" · ");
+      if (detail) body.appendChild(el("div", "where font-mono", detail));
+
+      const people = (win.people || []).join(", ");
+      if (people) body.appendChild(el("p", null, people));
+
+      const cash = money(win.prizeCents);
+      const prizeLine = [cash, win.prizeName].filter(Boolean).join(" + ");
+      if (prizeLine) body.appendChild(el("div", "t-prize font-mono", `↳ ${prizeLine}`));
+
+      article.appendChild(body);
+      article.appendChild(el("div", "t-tag font-mono upper", win.placement || "★ WIN"));
+      return article;
+    }
+
+    window.__recaps
+      .then((data) => {
+        const wins = Array.isArray(data.wins) ? data.wins : [];
+        if (!wins.length) return;
+        wins.forEach((win) => grid.appendChild(renderWin(win)));
+        section?.removeAttribute("hidden");
+      })
+      .catch(() => {
+        /* endpoint missing or upstream down — section stays hidden */
+      });
+  })();
+</script>
 
 <style>
   .sec {
     padding: 72px 0;
     border-bottom: 1.5px solid var(--ink);
   }
+  .sec[hidden] { display: none; }
 
   .trophy-grid {
     display: grid;
@@ -74,7 +108,7 @@ const meta = `<span data-stat="wins">${wins.length}</span> FIRST-PLACE FINISHES 
     border-top: 1.5px solid var(--ink);
   }
 
-  .trophy {
+  .trophy-grid :global(.trophy) {
     grid-column: span 6;
     border-bottom: 1.5px solid var(--ink);
     border-right: 1.5px solid var(--ink);
@@ -85,25 +119,15 @@ const meta = `<span data-stat="wins">${wins.length}</span> FIRST-PLACE FINISHES 
     align-items: start;
     transition: background var(--dur-normal) ease;
   }
-
-  /* Right column has no right border */
-  .trophy:nth-child(2n) {
-    border-right: none;
-  }
-
-  /* Bottom row has no bottom border (assume even count of cards) */
-  .trophy:nth-last-child(-n + 2) {
-    border-bottom: none;
-  }
-
-  .trophy:hover { background: var(--paper-2); }
-  .trophy:hover .t-tag {
+  .trophy-grid :global(.trophy:nth-child(2n)) { border-right: none; }
+  .trophy-grid :global(.trophy:hover) { background: var(--paper-2); }
+  .trophy-grid :global(.trophy:hover .t-tag) {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--paper);
   }
 
-  .t-date {
+  .trophy-grid :global(.t-date) {
     font-size: 12px;
     letter-spacing: 0.08em;
     border: 1px solid var(--ink);
@@ -113,26 +137,26 @@ const meta = `<span data-stat="wins">${wins.length}</span> FIRST-PLACE FINISHES 
     white-space: nowrap;
   }
 
-  .t-body h3 {
+  .trophy-grid :global(.t-body h3) {
     font-size: 28px;
     font-weight: 700;
     letter-spacing: -0.02em;
     margin: 0 0 4px;
     line-height: 1.05;
   }
-  .t-body .where {
+  .trophy-grid :global(.t-body .where) {
     font-size: 12px;
     color: var(--muted);
     letter-spacing: 0.04em;
   }
-  .t-body p {
+  .trophy-grid :global(.t-body p) {
     font-size: 15px;
     line-height: 1.4;
     margin: 12px 0 0;
     max-width: 44ch;
   }
 
-  .t-tag {
+  .trophy-grid :global(.t-tag) {
     font-size: 11px;
     letter-spacing: 0.14em;
     background: var(--ink);
@@ -140,12 +164,12 @@ const meta = `<span data-stat="wins">${wins.length}</span> FIRST-PLACE FINISHES 
     padding: 5px 9px;
     border: 1px solid var(--ink);
     align-self: start;
+    white-space: nowrap;
     transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease,
       color var(--dur-fast) ease;
-    white-space: nowrap;
   }
 
-  .t-prize {
+  .trophy-grid :global(.t-prize) {
     font-size: 12px;
     color: var(--accent);
     font-weight: 700;
@@ -154,19 +178,16 @@ const meta = `<span data-stat="wins">${wins.length}</span> FIRST-PLACE FINISHES 
   }
 
   @media (max-width: 720px) {
-    .trophy {
+    .trophy-grid :global(.trophy) {
       grid-column: span 12;
       border-right: none;
       grid-template-columns: auto 1fr;
       gap: 16px;
     }
-    .trophy .t-tag {
+    .trophy-grid :global(.trophy .t-tag) {
       grid-column: 2;
       justify-self: start;
       margin-top: 4px;
     }
-    .trophy:nth-child(2n) { border-right: none; }
-    .trophy:nth-last-child(-n + 2) { border-bottom: 1.5px solid var(--ink); }
-    .trophy:last-child { border-bottom: none; }
   }
 </style>

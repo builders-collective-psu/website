@@ -52,8 +52,25 @@ const { sha, djb } = gateHashes();
       try {
         localStorage.setItem(KEY, sha);
       } catch {
-        /* private window — this session only */
+        /* private window — the cookie below still carries it */
       }
+
+      // A cookie as well as localStorage, for two reasons: localStorage is
+      // per-origin, so unlocking on psu.builders would not carry over to
+      // www.psu.builders, and some browsers drop localStorage but keep
+      // cookies. Scoped to the registrable domain when there is one.
+      try {
+        const secure = location.protocol === "https:" ? "; Secure" : "";
+        const base = `${KEY}=${sha}; Max-Age=${60 * 60 * 24 * 365}; Path=/; SameSite=Lax${secure}`;
+        document.cookie = base;
+        const labels = location.hostname.split(".");
+        if (labels.length > 2) {
+          document.cookie = `${base}; Domain=.${labels.slice(-2).join(".")}`;
+        }
+      } catch {
+        /* cookies unavailable — localStorage above still applies */
+      }
+
       root.removeAttribute("data-locked");
       document.querySelector("[data-gate]")?.remove();
     }

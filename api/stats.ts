@@ -19,8 +19,8 @@ interface Member {
 export default async function handler(): Promise<Response> {
   try {
     const [recaps, members] = await Promise.all([
-      call<Recap[]>("community/feed"),
-      call<Member[]>("community/members").catch(() => [] as Member[]),
+      call<Recap[]>("/community/feed"),
+      call<Member[]>("/community/members").catch(() => [] as Member[]),
     ]);
 
     const unique = dedupeByTeam(recaps);

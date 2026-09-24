@@ -42,6 +42,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://psu.builder
           try {
             unlocked = localStorage.getItem("site-gate") === sha;
           } catch (e) {}
+          if (!unlocked) {
+            // Cookie fallback: survives a different subdomain, and browsers
+            // that clear localStorage but keep cookies.
+            unlocked = document.cookie.split("; ").indexOf("site-gate=" + sha) !== -1;
+          }
           if (!unlocked) document.documentElement.setAttribute("data-locked", "");
         })();
       </script>
@@ -146,6 +151,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://psu.builder
   }
   html[data-locked] body {
     overflow: hidden;
+  }
+
+  /* The gate markup ships on every response, so it must hide itself whenever
+     the visitor is already unlocked. Without this it stays on top — it is
+     position: fixed — and every reload looks like a fresh login prompt even
+     though the stored token was accepted. */
+  html:not([data-locked]) [data-gate] {
+    display: none !important;
   }
 
   /* Visually-hidden helper for screen readers (and skip link) */
