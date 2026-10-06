@@ -1,39 +1,49 @@
 {
-  "intro": "ENTI is Penn State's intercollege minor in Entrepreneurship and Innovation, run out of the College of Engineering's School of Engineering Design and Innovation. It is open to every major. We build the projects; ENTI is where that work turns into credits, and where a weekend hack gets treated like the start of a venture.",
+  "intro": "Build beyond the hackathon. Explore Penn State's Product Innovation cluster through the ENTI minor, or take the shorter Product Innovation Entrepreneurship certificate. Both paths put making, testing, and launching at the center.",
   "reasons": [
-    "The coursework is the thing we already do on weekends — customer research, prototypes, pitching — with a grade attached.",
-    "Open to all ten colleges, so the whole team can take it, not just the engineers.",
-    "Finish the sequence and you leave with a minor or a certificate on your transcript, not only a repo."
+    "Open to students from every major.",
+    "Choose a full minor or a focused, three-course certificate.",
+    "Bring your projects and ideas into the classroom."
   ],
   "tracks": [
     {
       "id": "minor",
-      "kicker": "MINOR",
-      "name": "Entrepreneurship & Innovation",
-      "credits": "9 core + 9–10.5 cluster credits",
-      "summary": "Three core courses, then three more from one of ten concentration clusters. Engineering students usually take the Product Innovation cluster.",
+      "kicker": "01 / ENTI MINOR",
+      "name": "Product Innovation cluster",
+      "credits": "18 credits",
+      "summary": "Explore these core and cluster courses. See the official minor requirements for the complete course plan.",
       "courses": [
         "MGMT 215 — Entrepreneurial Mindset",
         "ENGR 310 — Entrepreneurial Leadership",
-        "ENGR 425 — New Venture Creation"
+        "ENGR 407 — Product Innovation Entrepreneurship",
+        "ENGR 411 — Entrepreneurship Business Fundamentals"
+      ],
+      "electiveLabel": "Featured cluster electives · choose 3 credits",
+      "electives": [
+        "EDSGN 367 — Design Thinking and Making",
+        "EDSGN 467 — Prototyping to Launch",
+        "ENGR 408 — Leadership Principles"
       ]
     },
     {
       "id": "certificate",
-      "kicker": "CERTIFICATE",
-      "name": "Product Innovation",
-      "credits": "3 courses",
-      "summary": "The shorter route. One required course plus two from the Product Innovation list — worth taking if the full minor does not fit your schedule.",
+      "kicker": "02 / CERTIFICATE",
+      "name": "Product Innovation Entrepreneurship",
+      "credits": "9 credits",
+      "summary": "A suggested three-course path: ENGR 411 plus ENGR 310 and ENGR 407. Other approved options are listed in the certificate requirements.",
       "courses": [
-        "ENGR 411 — Business Fundamentals for Entrepreneurs",
-        "ENGR 407 — Technology-Based Entrepreneurship",
-        "ENGR 415 — Technology Launch for Entrepreneurs"
-      ]
+        "ENGR 411 — Entrepreneurship Business Fundamentals",
+        "ENGR 310 — Entrepreneurial Leadership",
+        "ENGR 407 — Product Innovation Entrepreneurship"
+      ],
+      "link": { "label": "Certificate requirements", "href": "https://bulletins.psu.edu/undergraduate/colleges/engineering/product-innovation-entrepreneurship-certificate/#programrequirementstext" }
     }
   ],
+  "note": "Featured courses are a starting point, not a complete minor checklist. Confirm course availability and your entry-year requirements with an adviser.",
   "email": "eship@engr.psu.edu",
   "links": [
-    { "label": "ENTI minor — CPSSE", "href": "https://cpsse.psu.edu/enti" },
-    { "label": "Engineering Entrepreneurship — SEDI", "href": "https://www.sedi.psu.edu/eship/undergraduate/academics.aspx" }
+    { "label": "Official minor requirements", "href": "https://bulletins.psu.edu/undergraduate/colleges/intercollege/entrepreneurship-innovation-minor/#programrequirementstext" },
+    { "label": "Product Innovation · E-SHIP", "href": "https://eship.engr.psu.edu/" },
+    { "label": "Engineering Entrepreneurship academics", "href": "https://www.sedi.psu.edu/eship/undergraduate/academics.aspx" }
   ]
 }

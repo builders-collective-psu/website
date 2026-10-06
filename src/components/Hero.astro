@@ -1,115 +1,148 @@
 ---
 import Button from "./ui/Button.astro";
 import StatBlock from "./ui/StatBlock.astro";
+import event from "@data/featured-event.json";
 import { REAL_DATA } from "@lib/flags";
 
-interface StatsData {
-  wins: number;
-  hackathons: number;
-  shipped: number;
-}
-
 interface Props {
-  stats: StatsData;
-  location?: string;
+  stats: { wins: number; hackathons: number; shipped: number };
 }
-
-const { stats, location = "UNIVERSITY PARK, PA" } = Astro.props;
-
+const { stats } = Astro.props;
 const pad = (n: number) => n.toString().padStart(2, "0");
 ---
 
-<section class="hero" aria-labelledby="hero-heading">
+<section class="hero" id="compiled" aria-labelledby="hero-heading">
   <div class="wrap">
-    <p class="hero-eyebrow font-mono upper">PENN STATE UNIVERSITY · {location}</p>
-
-    <h1 id="hero-heading" class="display hero-title upper">
-      WE SHIP<br />
-      <span class="amp">while</span> YOU<br />
-      SLEEP.
-    </h1>
-
-    <div class="hero-sub">
-      <p class="manifesto">
-        An elite team of Penn State engineers and designers who build for
-        hackathons.
-      </p>
-      <StatBlock label="WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
-      <StatBlock
-        label="HACKATHONS"
-        value={pad(stats.hackathons)}
-        field={REAL_DATA ? "hackathons" : undefined}
-      />
-      <StatBlock label="SHIPPED" value={pad(stats.shipped)} field={REAL_DATA ? "shipped" : undefined} />
+    <div class="event-strip font-mono upper">
+      <span><span class="live-mark" aria-hidden="true"></span> We're hosting · You're invited</span>
+      <time datetime={event.date}>{event.dateLabel}</time>
     </div>
 
-    <div class="ctas">
-      <Button href="#apply" arrow="external">Apply to Build</Button>
-      <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
+    <div class="event-grid">
+      <div class="event-copy">
+        <p class="eyebrow font-mono upper">Builders Collective × c0mpiled</p>
+        <h1 id="hero-heading" class="display event-title">{event.name}<span>Penn State.</span></h1>
+        <p class="event-tagline">Make something<br /><em>people want.</em></p>
+        <p class="event-intro">Seven hours of building. Meet your next collaborators and put your ideas to the test. All majors. All experience levels.</p>
+        <div class="ctas">
+          <Button href={event.url}>Request to Join</Button>
+          <Button href="#event-details" variant="ghost" arrow="inline">Explore the event</Button>
+        </div>
+        <p class="registration-note font-mono">Registration requires host approval.</p>
+      </div>
+
+      <aside class="event-card" aria-label="Event at a glance">
+        <div class="card-header font-mono upper"><span>12–9 PM EDT · Two tracks</span><span>№ 15</span></div>
+        <div class="date-display"><span class="font-mono upper">October</span><strong>11<span aria-hidden="true">↗</span></strong><span class="font-mono upper">Sunday / 2026</span></div>
+        <div class="card-facts">
+          <p class="font-mono">{event.time}<span>Doors open at 11 AM</span></p>
+          <p>{event.venue}<span>{event.location}</span></p>
+        </div>
+        <div class="prize-row"><strong>{event.prizes}</strong><span class="font-mono upper">in prizes</span></div>
+      </aside>
+    </div>
+
+    <div class="event-details" id="event-details">
+      <div class="tracks">
+        {event.tracks.map((track) => (
+          <article class="event-track">
+            <p class="eyebrow font-mono upper">Track {track.number} / {track.partner}</p>
+            <h2>{track.name}</h2>
+            <p>{track.description}</p>
+          </article>
+        ))}
+      </div>
+      <div class="event-extras font-mono"><span>YC founders judging & mentoring</span><span>Dinner, drinks & snacks provided</span><span>Building: noon–7 PM EDT</span></div>
+      <h2 class="agenda-heading font-mono upper">Schedule / <time datetime={event.date}>{event.dateLabel}</time> / EDT</h2>
+      <ol class="agenda">
+        {event.agenda.map((item) => <li><span class="font-mono">{item.time}</span><span>{item.label}</span></li>)}
+      </ol>
+      <p class="event-source font-mono"><a href={event.url} target="_blank" rel="noopener noreferrer">Full schedule, prizes & registration on Luma ↗</a></p>
+      <div class="event-sponsors" aria-labelledby="event-sponsors-heading">
+        <div class="sponsors-heading"><h2 id="event-sponsors-heading">Sponsors & builder perks</h2><span class="font-mono upper">Backing your next build</span></div>
+        <div class="sponsor-grid">
+          {event.sponsors.map(sponsor => <article class="sponsor-card"><h3>{sponsor.name}</h3><p class="offer">{sponsor.offer}</p><p>{sponsor.detail}</p></article>)}
+        </div>
+        <p class="supporters font-mono">Also supported by Red Bull and MongoDB.</p>
+      </div>
+    </div>
+
+    <div class="collective-strip">
+      <div class="collective-copy"><h2 class="upper">We ship while you sleep.</h2><p>Penn State engineers and designers building for hackathons.</p><a class="font-mono" href="#apply">Apply to Builders Collective →</a></div>
+      <StatBlock label="WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
+      <StatBlock label="HACKATHONS" value={pad(stats.hackathons)} field={REAL_DATA ? "hackathons" : undefined} />
+      <StatBlock label="SHIPPED" value={pad(stats.shipped)} field={REAL_DATA ? "shipped" : undefined} />
     </div>
   </div>
 </section>
 
 <style>
-  .hero {
-    padding: 56px 0 48px;
-    border-bottom: 2px solid var(--ink);
-    position: relative;
-  }
-
-  .hero-eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.16em;
-    margin: 0 0 28px;
-    color: var(--muted);
-  }
-
-  .hero-title {
-    font-size: clamp(80px, 14vw, 220px);
-    font-weight: 700;
-    margin: 0;
-    line-height: 0.88;
-  }
-  .hero-title .amp {
-    color: var(--accent);
-    font-style: italic;
-    font-family: var(--font-serif);
-    font-weight: 400;
-    letter-spacing: 0;
-  }
-
-  .hero-sub {
-    margin-top: 28px;
-    display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr 1fr;
-    gap: 24px;
-    border-top: 1.5px solid var(--ink);
-    padding-top: 18px;
-  }
-
-  .manifesto {
-    font-size: 22px;
-    line-height: 1.18;
-    max-width: 36ch;
-    letter-spacing: -0.01em;
-    margin: 0;
-  }
-
-  .ctas {
-    display: flex;
-    gap: 12px;
-    margin-top: 28px;
-    flex-wrap: wrap;
-  }
-
-  @media (max-width: 900px) {
-    .hero-sub { grid-template-columns: 1fr 1fr; }
-    .manifesto { grid-column: 1 / -1; }
-  }
-  @media (max-width: 560px) {
-    .hero { padding: 36px 0 32px; }
-    .hero-eyebrow { font-size: 11px; }
-    .hero-sub { grid-template-columns: 1fr 1fr; gap: 18px; }
-    .manifesto { font-size: 18px; }
+  .hero { padding: 24px 0 40px; border-bottom: 2px solid var(--ink); }
+  .event-strip { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 11px; letter-spacing: .1em; padding-bottom: 16px; border-bottom: 1px solid var(--ink); }
+  .live-mark { display: inline-block; width: 8px; height: 8px; margin-right: 8px; background: var(--accent); }
+  .event-grid { display: grid; grid-template-columns: 1.65fr 1fr; gap: 64px; align-items: center; padding: 48px 0; }
+  .eyebrow { font-size: 11px; letter-spacing: .1em; color: var(--muted); margin: 0 0 18px; }
+  .event-title { font-size: clamp(46px, 6.6vw, 96px); margin: 0; line-height: .95; }
+  .event-title > span { display: block; color: var(--accent); }
+  .event-tagline { font-size: clamp(28px, 3.5vw, 48px); line-height: 1.05; letter-spacing: -.03em; margin: 28px 0 18px; }
+  .event-tagline em { font-family: var(--font-serif); font-weight: 400; }
+  .event-intro { max-width: 46ch; color: var(--ink-2); margin: 0; }
+  .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+  .registration-note { color: var(--muted); font-size: 11px; margin: 12px 0 0; }
+  .event-card { border: 1.5px solid var(--ink); box-shadow: 8px 8px 0 var(--ink); background: var(--paper-2); }
+  .card-header { display: flex; justify-content: space-between; gap: 10px; background: var(--ink); color: var(--paper); padding: 12px 18px; font-size: 11px; letter-spacing: .08em; }
+  .date-display { padding: 24px; display: grid; }
+  .date-display > span { font-size: 13px; letter-spacing: .14em; }
+  .date-display strong { display: flex; justify-content: space-between; align-items: center; font-size: clamp(100px, 10vw, 150px); line-height: 1; letter-spacing: -.08em; }
+  .date-display strong span { font-size: 72px; color: var(--accent); letter-spacing: 0; }
+  .card-facts { padding: 0 24px 20px; }
+  .card-facts p { margin: 0; padding: 14px 0; border-top: 1px solid var(--hairline); font-size: 16px; font-weight: 600; line-height: 1.35; }
+  .card-facts p span { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 6px; }
+  .prize-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 24px; background: var(--accent); color: #0B1220; }
+  .prize-row strong { font-size: 36px; letter-spacing: -.04em; }
+  .prize-row > span { font-size: 11px; }
+  .event-details { scroll-margin-top: 24px; }
+  .tracks { display: grid; grid-template-columns: 1fr 1fr; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); }
+  .event-track { padding: 24px 0; }
+  .event-track + .event-track { border-left: 1px solid var(--ink); padding-left: 32px; margin-left: 32px; }
+  .event-track .eyebrow { margin-bottom: 10px; }
+  .event-track h2 { font-size: 26px; letter-spacing: -.03em; line-height: 1.2; margin: 0 0 10px; }
+  .event-track > p:last-child { font-size: 15px; max-width: 55ch; color: var(--ink-2); margin: 0; }
+  .event-extras { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding: 18px 0; font-size: 11px; color: var(--muted); }
+  .event-extras span::before { content: '+'; color: var(--accent); margin-right: 8px; }
+  .agenda { list-style: none; padding: 18px 0; margin: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; border-top: 1px solid var(--hairline); }
+  .agenda-heading { font-size: 11px; font-weight: 400; letter-spacing: .06em; padding: 14px 0; margin: 0; border-top: 1px solid var(--ink); }
+  .agenda li { display: grid; gap: 6px; font-size: 13px; }
+  .agenda .font-mono { font-size: 11px; color: var(--muted); }
+  .event-source { font-size: 11px; margin: 0 0 28px; }
+  .event-sponsors { border-top: 1.5px solid var(--ink); margin-bottom: 32px; }
+  .sponsors-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 24px 0; }
+  .sponsors-heading h2 { font-size: 28px; letter-spacing: -.03em; margin: 0; }
+  .sponsors-heading > span { font-size: 11px; color: var(--muted); }
+  .sponsor-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .sponsor-card { padding: 20px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+  .sponsor-card h3 { font-size: 17px; font-weight: 600; margin: 0 0 10px; }
+  .sponsor-card .offer { font-size: 24px; font-weight: 700; color: var(--accent); letter-spacing: -.03em; margin: 0 0 8px; }
+  .sponsor-card > p:last-child { font-size: 13px; margin: 0; color: var(--muted); }
+  .supporters { font-size: 11px; color: var(--muted); margin: 16px 0 0; }
+  .event-source a, .collective-copy a { border-bottom: 1px solid var(--hairline); }
+  .hero a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .event-source a:hover, .collective-copy a:hover { color: var(--accent); }
+  .collective-strip { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 24px; align-items: center; border-top: 1.5px solid var(--ink); padding-top: 28px; }
+  .collective-copy h2 { font-size: 22px; line-height: 1.2; margin: 0 0 6px; }
+  .collective-copy p { font-size: 14px; margin: 0 0 8px; color: var(--muted); }
+  .collective-copy a { font-size: 11px; }
+  @media (max-width: 1000px) { .event-grid { gap: 32px; } .card-header { font-size: 10px; } }
+  @media (max-width: 760px) {
+    .event-grid { grid-template-columns: 1fr; padding: 32px 0; gap: 32px; }
+    .event-title { font-size: clamp(46px, 10vw, 76px); }
+    .event-card { box-shadow: 5px 5px 0 var(--ink); }
+    .date-display strong { font-size: 100px; }
+    .tracks { grid-template-columns: 1fr; }
+    .event-track + .event-track { border-left: 0; border-top: 1px solid var(--hairline); padding-left: 0; margin-left: 0; }
+    .collective-strip { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .collective-copy { grid-column: 1 / -1; }
+    .agenda { grid-template-columns: 1fr 1fr; }
+    .sponsor-grid { grid-template-columns: 1fr; }
   }
 </style>
