@@ -2,6 +2,8 @@
 import SectionHeader from "./ui/SectionHeader.astro";
 import { REAL_DATA } from "@lib/flags";
 import trophies from "@data/trophies.json";
+import log from "@data/log.json";
+import HackathonLog from "./HackathonLog.astro";
 
 /**
  * Wins.
@@ -34,7 +36,8 @@ const meta = REAL_DATA
 
 <section class="sec" id="trophies" aria-labelledby="trophies-heading" hidden={REAL_DATA} data-trophies>
   <div class="wrap">
-    <SectionHeader title="Trophy Case" meta={meta} id="trophies-heading" />
+    <p class="section-divider font-mono upper">The collective / Our track record</p>
+    <SectionHeader title="Built & Won" meta={meta} id="trophies-heading" />
 
     <div class="trophy-grid" data-trophy-grid>
       {
@@ -55,6 +58,7 @@ const meta = REAL_DATA
           ))
       }
     </div>
+    {!REAL_DATA && <details class="all-results"><summary class="font-mono upper">Explore all {log.events.length} builds & results <span aria-hidden="true">↳</span></summary><HackathonLog log={log} embedded /></details>}
   </div>
 </section>
 
@@ -130,9 +134,15 @@ const meta = REAL_DATA
 <style>
   .sec {
     padding: 72px 0;
+    border-top: 4px solid var(--ink);
     border-bottom: 1.5px solid var(--ink);
   }
   .sec[hidden] { display: none; }
+  .section-divider { color: var(--muted); font-size: 11px; letter-spacing: .14em; margin: 0 0 24px; }
+  .all-results { margin-top: 32px; border-top: 1.5px solid var(--ink); }
+  .all-results summary { cursor: pointer; padding: 20px 0; font-size: 12px; letter-spacing: .08em; }
+  .all-results summary:hover { color: var(--accent); }
+  .all-results summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
   .trophy-grid {
     display: grid;

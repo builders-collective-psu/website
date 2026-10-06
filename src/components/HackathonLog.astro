@@ -1,6 +1,7 @@
 ---
 import SectionHeader from "./ui/SectionHeader.astro";
 import Badge from "./ui/Badge.astro";
+import trophies from "@data/trophies.json";
 
 interface LogEvent {
   date: string;
@@ -20,22 +21,24 @@ interface LogData {
 interface Props {
   log: LogData;
   limit?: number;
+  embedded?: boolean;
 }
 
-const { log, limit = 10 } = Astro.props;
+const { log, limit = 10, embedded = false } = Astro.props;
 
 const events = [...log.events]
   .sort((a, b) => (a.date < b.date ? 1 : -1))
-  .slice(0, limit);
+  .slice(0, limit)
+  .map(event => ({ ...event, prizeCash: trophies.find(t => t.date === event.date)?.prize.cash }));
 
 const totalEvents = log.events.length;
 const totalWins = log.events.filter((e) => e.result.type === "win").length;
 const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${log.season.replace("-", "—")}`;
 ---
 
-<section class="sec" id="log" aria-labelledby="log-heading">
-  <div class="wrap">
-    <SectionHeader title="Hackathon Log" meta={meta} id="log-heading" />
+<section class:list={["sec", { embedded }]} id="log" aria-label={embedded ? "All builds and results" : undefined} aria-labelledby={embedded ? undefined : "log-heading"}>
+  <div class:list={[!embedded && "wrap"]}>
+    {!embedded && <SectionHeader title="Builds & Results" meta={meta} id="log-heading" />}
 
     <div class="table-wrap">
       <table class="log-table">
@@ -45,13 +48,14 @@ const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${log.season.replace
             <th scope="col">EVENT</th>
             <th scope="col">PROJECT</th>
             <th scope="col">STACK</th>
+            <th scope="col">PRIZES</th>
             <th class="col-result" scope="col">RESULT</th>
           </tr>
         </thead>
         <tbody>
           {
             events.map((e) => (
-              <tr>
+              <tr class:list={{ "winning-row": e.result.type === "win" }}>
                 <td class="t-date font-mono">{e.dateShort}</td>
                 <td class="t-event">{e.event}</td>
                 <td class="t-project font-mono">
@@ -62,6 +66,7 @@ const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${log.season.replace
                   )}
                 </td>
                 <td class="t-stack font-mono">{e.stack.join(" · ")}</td>
+                <td class="t-prize font-mono">{e.prizeCash ? `$${e.prizeCash.toLocaleString("en-US")}` : "—"}</td>
                 <td>
                   <Badge variant={e.result.type as "win" | "top" | "ship"} label={e.result.label} />
                 </td>
@@ -84,6 +89,7 @@ const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${log.season.replace
     width: 100%;
     overflow-x: auto;
   }
+  .sec.embedded { padding: 0; border: 0; }
 
   .log-table {
     width: 100%;
@@ -117,6 +123,8 @@ const meta = `${totalEvents} EVENTS · ${totalWins} WINS · ${log.season.replace
     transition: background var(--dur-normal) ease;
   }
   .log-table tbody tr:hover td { background: var(--paper-2); }
+  .winning-row td:first-child { border-left: 3px solid var(--accent); }
+  .t-prize { font-size: 13px; white-space: nowrap; color: var(--accent); font-weight: 600; }
 
   .col-date { width: 120px; }
   .col-result { width: 110px; }

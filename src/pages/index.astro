@@ -3,7 +3,6 @@ import Base from "@layouts/Base.astro";
 import Hero from "@components/Hero.astro";
 import TrophyCase from "@components/TrophyCase.astro";
 import WhyEnti from "@components/WhyEnti.astro";
-import HackathonLog from "@components/HackathonLog.astro";
 import Team from "@components/Team.astro";
 import ApplySponsor from "@components/ApplySponsor.astro";
 import LiveStats from "@components/LiveStats.astro";
@@ -11,17 +10,15 @@ import RecapFeed from "@components/RecapFeed.astro";
 
 import stats from "@data/stats.json";
 import enti from "@data/enti.json";
-import log from "@data/log.json";
 import team from "@data/team.json";
 import apply from "@data/apply.json";
 ---
 
-<Base>
+<Base description="Join Builders Collective and c0mpiled-15 at Penn State on October 11, 2026. Build, validate, and compete for $10,000+ in prizes. Explore the ENTI Product Innovation minor.">
   <Hero stats={stats} />
   <TrophyCase />
   <WhyEnti enti={enti} />
   <RecapFeed />
-  <HackathonLog log={log} />
   <Team team={team} />
   <ApplySponsor apply={apply} />
   <LiveStats />
