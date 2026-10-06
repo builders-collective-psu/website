@@ -1,26 +1,27 @@
 {
   "name": "Builders Collective",
   "tagline": "Penn State University",
-  "established": "2022",
+  "established": "2025",
   "location": "University Park, PA",
   "domain": "psu.builders",
   "email": "hello@psu.builders",
+  "signInUrl": "https://bunker.psu.builders",
   "social": {
     "linkedin": "https://www.linkedin.com/company/builder-s-collective-at-pennstate/",
     "github": "https://github.com/builders-collective-psu"
   },
   "nav": [
     {
-      "label": "Trophies",
+      "label": "c0mpiled-15",
+      "href": "#compiled"
+    },
+    {
+      "label": "Built & Won",
       "href": "#trophies"
     },
     {
       "label": "ENTI",
       "href": "#enti"
-    },
-    {
-      "label": "Log",
-      "href": "#log"
     },
     {
       "label": "Team",

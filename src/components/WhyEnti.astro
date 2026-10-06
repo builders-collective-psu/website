@@ -8,6 +8,9 @@ interface Track {
   credits: string;
   summary: string;
   courses: string[];
+  electives?: string[];
+  electiveLabel?: string;
+  link?: { label: string; href: string };
 }
 
 interface EntiData {
@@ -16,6 +19,7 @@ interface EntiData {
   tracks: Track[];
   email: string;
   links: { label: string; href: string }[];
+  note: string;
 }
 
 interface Props {
@@ -28,8 +32,8 @@ const { enti } = Astro.props;
 <section class="sec" id="enti" aria-labelledby="enti-heading">
   <div class="wrap">
     <SectionHeader
-      title="Why ENTI?"
-      meta="PENN STATE · COLLEGE OF ENGINEERING"
+      title="Product Innovation."
+      meta="ENTI MINOR + CERTIFICATE"
       id="enti-heading"
     />
 
@@ -53,11 +57,21 @@ const { enti } = Astro.props;
             <ul class="courses font-mono">
               {track.courses.map((course) => <li>{course}</li>)}
             </ul>
+            {track.electives && (
+              <>
+                <h4 class="elective-label font-mono upper">{track.electiveLabel}</h4>
+                <ul class="courses electives font-mono">
+                  {track.electives.map((course) => <li>{course}</li>)}
+                </ul>
+              </>
+            )}
+            {track.link && <a class="track-link font-mono" href={track.link.href} target="_blank" rel="noopener noreferrer">{track.link.label} ↗</a>}
           </article>
         ))
       }
     </div>
 
+    <p class="requirements-note">{enti.note}</p>
     <div class="foot font-mono">
       <span>↳ QUESTIONS: <a href={`mailto:${enti.email}`}>{enti.email}</a></span>
       <span class="links">
@@ -143,7 +157,13 @@ const { enti } = Astro.props;
     font-size: 11px;
     letter-spacing: 0.14em;
   }
-  .track-top .credits { color: var(--accent); }
+  .track-top .credits { color: inherit; white-space: nowrap; }
+  .elective-label { margin: 24px 24px 0; font-size: 11px; color: var(--muted); letter-spacing: .08em; }
+  .courses.electives { margin-top: 10px; }
+  .requirements-note { margin: 18px 0 0; font-size: 13px; color: var(--muted); max-width: 100ch; }
+  .track-link { display: inline-block; margin: 24px 24px 0; font-size: 12px; border-bottom: 1px solid currentColor; }
+  .track-link:hover { color: var(--accent); }
+  .track-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
   .track h3 {
     font-size: 28px;
