@@ -14,4 +14,9 @@
  */
 const TRUTHY = new Set(["1", "true", "on", "yes"]);
 
-export const REAL_DATA = TRUTHY.has((process.env.REAL_DATA || "").toLowerCase());
+// Astro surfaces .env through import.meta.env; process.env only carries what
+// the shell exported. Check both so `REAL_DATA=1 npm run build` and a line in
+// .env behave the same.
+const RAW = import.meta.env.REAL_DATA ?? process.env.REAL_DATA ?? "";
+
+export const REAL_DATA = TRUTHY.has(String(RAW).toLowerCase());

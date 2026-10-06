@@ -5,7 +5,7 @@ import event from "@data/featured-event.json";
 import { REAL_DATA } from "@lib/flags";
 
 interface Props {
-  stats: { wins: number; hackathons: number; shipped: number };
+  stats: { wins: number; hackathons: number; shipped: number; winsAllTime: string };
 }
 const { stats } = Astro.props;
 const pad = (n: number) => n.toString().padStart(2, "0");
@@ -14,10 +14,11 @@ const pad = (n: number) => n.toString().padStart(2, "0");
 <section class="hero" id="compiled" aria-labelledby="hero-heading">
   <div class="wrap">
     <div class="event-strip font-mono upper">
-      <span><span class="live-mark" aria-hidden="true"></span> We're hosting · You're invited</span>
-      <time datetime={event.date}>{event.dateLabel}</time>
+      <span><span class="live-mark" aria-hidden="true"></span> Featured event · We're hosting</span>
+      <span class="strip-until">Up until <time datetime={event.date}>{event.dateLabel}</time></span>
     </div>
 
+    <div class="takeover">
     <div class="event-grid">
       <div class="event-copy">
         <p class="eyebrow font-mono upper">Builders Collective × c0mpiled</p>
@@ -67,9 +68,16 @@ const pad = (n: number) => n.toString().padStart(2, "0");
       </div>
     </div>
 
+    </div>
+
+    <p class="takeover-end font-mono upper" aria-hidden="true">
+      <span>End of featured event</span>
+      <span>Builders Collective below</span>
+    </p>
+
     <div class="collective-strip">
       <div class="collective-copy"><h2 class="upper">We ship while you sleep.</h2><p>Penn State engineers and designers building for hackathons.</p><a class="font-mono" href="#apply">Apply to Builders Collective →</a></div>
-      <StatBlock label="WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
+      <StatBlock label="HACKATHON WINS" value={stats.winsAllTime} />
       <StatBlock label="HACKATHONS" value={pad(stats.hackathons)} field={REAL_DATA ? "hackathons" : undefined} />
       <StatBlock label="SHIPPED" value={pad(stats.shipped)} field={REAL_DATA ? "shipped" : undefined} />
     </div>
@@ -78,6 +86,29 @@ const pad = (n: number) => n.toString().padStart(2, "0");
 
 <style>
   .hero { padding: 24px 0 40px; border-bottom: 2px solid var(--ink); }
+
+  /* The c0mpiled block is a dated takeover, not the permanent homepage. The
+     dashed accent frame and the closing rule mark where it starts and stops,
+     so it reads as something pinned to the top until the event passes. */
+  .takeover {
+    border-left: 2px dashed var(--accent);
+    border-right: 2px dashed var(--accent);
+    padding: 0 clamp(16px, 3vw, 40px);
+    margin-top: 4px;
+  }
+  .strip-until { color: var(--accent); }
+  .takeover-end {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0 0 40px;
+    padding-top: 14px;
+    border-top: 2px dashed var(--accent);
+    font-size: 11px;
+    letter-spacing: .14em;
+    color: var(--muted);
+  }
   .event-strip { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 11px; letter-spacing: .1em; padding-bottom: 16px; border-bottom: 1px solid var(--ink); }
   .live-mark { display: inline-block; width: 8px; height: 8px; margin-right: 8px; background: var(--accent); }
   .event-grid { display: grid; grid-template-columns: 1.65fr 1fr; gap: 64px; align-items: center; padding: 48px 0; }
