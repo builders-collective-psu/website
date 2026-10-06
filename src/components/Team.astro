@@ -58,10 +58,22 @@ const cards = team.map((m) => ({
 
             {m.image ? (
               <div class="card-portrait card-portrait--photo">
-                <img src={m.image} alt={m.name} width="200" height="210" loading="lazy" />
+                <img
+                  src={m.image}
+                  alt={m.name}
+                  width="200"
+                  height="210"
+                  loading="lazy"
+                  data-headshot={m.linkedinSlug}
+                />
               </div>
             ) : (
-              <div class="card-portrait" role="img" aria-label={`Portrait placeholder for ${m.name}`}>
+              <div
+                class="card-portrait"
+                role="img"
+                aria-label={`Portrait placeholder for ${m.name}`}
+                data-headshot-slot={m.linkedinSlug}
+              >
                 <span class="font-mono upper">PORTRAIT — 1:1.05</span>
               </div>
             )}
@@ -92,6 +104,48 @@ const cards = team.map((m) => ({
     </div>
   </div>
 </section>
+
+<script is:inline define:vars={{ endpoint: "/api/team-photos" }}>
+  (function () {
+    const slots = document.querySelectorAll("[data-headshot], [data-headshot-slot]");
+    if (!slots.length) return;
+
+    fetch(endpoint, { headers: { accept: "application/json" } })
+      .then((response) => {
+        if (!response.ok) throw new Error(`team-photos HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(({ photos }) => {
+        if (!photos) return;
+
+        slots.forEach((slot) => {
+          const slug = slot.getAttribute("data-headshot") || slot.getAttribute("data-headshot-slot");
+          const url = slug && photos[slug];
+          if (!url) return;
+
+          if (slot.tagName === "IMG") {
+            slot.src = url;
+            return;
+          }
+
+          // Initials tile — replace it with the real photo.
+          const img = document.createElement("img");
+          img.src = url;
+          img.alt = slot.getAttribute("aria-label")?.replace("Portrait placeholder for ", "") || "";
+          img.width = 200;
+          img.height = 210;
+          img.loading = "lazy";
+          slot.replaceChildren(img);
+          slot.classList.add("card-portrait--photo");
+          slot.removeAttribute("role");
+          slot.removeAttribute("aria-label");
+        });
+      })
+      .catch(() => {
+        /* endpoint missing or upstream down — the built-in portraits stand */
+      });
+  })();
+</script>
 
 <style>
   .sec {

@@ -15,23 +15,17 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { Readable } from "node:stream";
+import { loadEnv } from "./load-env.mts";
 
 const ROOT = new URL("../dist/", import.meta.url).pathname;
 const PORT = Number(process.env.PORT || 4321);
 
-// Load .env without a dependency.
-try {
-  const env = await readFile(new URL("../.env", import.meta.url), "utf8");
-  for (const line of env.split("\n")) {
-    const match = line.match(/^\s*([A-Z_]+)\s*=\s*"?([^"\n]*)"?\s*$/);
-    if (match && !process.env[match[1]]) process.env[match[1]] = match[2];
-  }
-} catch {
-  console.warn("No .env found — /api/* will return 503.");
-}
+
+await loadEnv(new URL("../.env", import.meta.url));
 
 const { default: stats } = await import("../api/stats.ts");
 const { default: recaps } = await import("../api/recaps.ts");
+const { default: teamPhotos } = await import("../api/team-photos.ts");
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -47,8 +41,12 @@ const MIME: Record<string, string> = {
 createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://localhost:${PORT}`);
 
-  const handler =
-    url.pathname === "/api/stats" ? stats : url.pathname === "/api/recaps" ? recaps : null;
+  const routes: Record<string, () => Promise<Response>> = {
+    "/api/stats": stats,
+    "/api/recaps": recaps,
+    "/api/team-photos": teamPhotos,
+  };
+  const handler = routes[url.pathname] ?? null;
 
   if (handler) {
     const response = await handler();

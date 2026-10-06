@@ -14,7 +14,7 @@ interface EntiData {
   intro: string;
   reasons: string[];
   tracks: Track[];
-  email: string;
+  contacts: { label: string; email: string }[];
   links: { label: string; href: string }[];
 }
 
@@ -29,7 +29,7 @@ const { enti } = Astro.props;
   <div class="wrap">
     <SectionHeader
       title="Why ENTI?"
-      meta="PENN STATE · COLLEGE OF ENGINEERING"
+      meta="PENN STATE · INTERCOLLEGE MINOR"
       id="enti-heading"
     />
 
@@ -59,7 +59,16 @@ const { enti } = Astro.props;
     </div>
 
     <div class="foot font-mono">
-      <span>↳ QUESTIONS: <a href={`mailto:${enti.email}`}>{enti.email}</a></span>
+      <span class="contacts">
+        ↳ QUESTIONS:
+        {
+          enti.contacts.map((contact) => (
+            <a href={`mailto:${contact.email}`}>
+              {contact.label} ({contact.email})
+            </a>
+          ))
+        }
+      </span>
       <span class="links">
         {
           enti.links.map((link) => (
@@ -184,6 +193,12 @@ const { enti } = Astro.props;
     flex-wrap: wrap;
     gap: 12px;
   }
+  .foot .contacts {
+    display: inline-flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
   .foot .links {
     display: inline-flex;
     gap: 18px;
