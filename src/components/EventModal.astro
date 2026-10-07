@@ -1,0 +1,254 @@
+---
+import Button from "./ui/Button.astro";
+import event from "@data/featured-event.json";
+
+/**
+ * The c0mpiled-15 details, in a native <dialog>.
+ *
+ * Opens once per visitor and then stays shut: the dismissal is remembered so
+ * returning to the site is not an obstacle course. The top bar reopens it on
+ * demand, and anything with [data-event-open] anywhere on the page does too.
+ *
+ * <dialog> gives Escape-to-close, focus trapping and inertness for free.
+ */
+const { name, url, date, dateLabel, time, venue, location, prizes } = event;
+---
+
+<dialog class="event" data-event-modal aria-labelledby="event-modal-title">
+  <article>
+    <header class="head">
+      <div>
+        <p class="eyebrow font-mono upper">Builders Collective presents</p>
+        <h2 id="event-modal-title" class="display">{name}</h2>
+      </div>
+      <button class="close" type="button" data-event-close aria-label="Close">✕</button>
+    </header>
+
+    <dl class="facts font-mono">
+      <div><dt>When</dt><dd><time datetime={date}>{dateLabel}</time> · {time}</dd></div>
+      <div><dt>Where</dt><dd>{venue}, {location}</dd></div>
+      <div><dt>Prizes</dt><dd class="accent">{prizes}</dd></div>
+    </dl>
+
+    <p class="intro">
+      Seven hours of building. Meet your next collaborators and put your ideas to
+      the test. All majors, all experience levels.
+    </p>
+
+    <div class="tracks">
+      {
+        event.tracks.map((track) => (
+          <section>
+            <p class="eyebrow font-mono upper">Track {track.number} · {track.partner}</p>
+            <h3>{track.name}</h3>
+            <p>{track.description}</p>
+          </section>
+        ))
+      }
+    </div>
+
+    <details class="more">
+      <summary class="font-mono upper">Schedule & sponsors</summary>
+      <ol class="agenda font-mono">
+        {event.agenda.map((item) => (
+          <li><span>{item.time}</span><span>{item.label}</span></li>
+        ))}
+      </ol>
+      <ul class="sponsors">
+        {event.sponsors.map((sponsor) => (
+          <li>
+            <strong>{sponsor.name}</strong>
+            <span class="font-mono accent">{sponsor.offer}</span>
+            <span>{sponsor.detail}</span>
+          </li>
+        ))}
+      </ul>
+      <p class="supporters font-mono">Also supported by Red Bull and MongoDB.</p>
+    </details>
+
+    <footer class="foot">
+      <Button href={url}>Request to Join</Button>
+      <span class="note font-mono">Registration requires host approval.</span>
+    </footer>
+  </article>
+</dialog>
+
+<script>
+  const KEY = "event-seen:c0mpiled-15";
+  const modal = document.querySelector<HTMLDialogElement>("[data-event-modal]");
+  if (modal) {
+    const open = () => {
+      if (!modal.open) modal.showModal();
+    };
+
+    document
+      .querySelectorAll("[data-event-open]")
+      .forEach((trigger) => trigger.addEventListener("click", open));
+
+    modal
+      .querySelector("[data-event-close]")
+      ?.addEventListener("click", () => modal.close());
+
+    // Clicking the backdrop (outside the panel) closes it too.
+    modal.addEventListener("click", (clickEvent) => {
+      if (clickEvent.target === modal) modal.close();
+    });
+
+    // Remember the dismissal so it only interrupts once.
+    modal.addEventListener("close", () => {
+      try {
+        localStorage.setItem(KEY, "1");
+      } catch {
+        /* private window — it will greet them again next visit */
+      }
+    });
+
+    let seen = false;
+    try {
+      seen = localStorage.getItem(KEY) === "1";
+    } catch {
+      /* treat unavailable storage as a first visit */
+    }
+
+    const past = new Date("2026-10-12T00:00:00Z").getTime() < Date.now();
+    if (!seen && !past) open();
+  }
+</script>
+
+<style>
+  .event {
+    width: min(760px, calc(100vw - 32px));
+    max-height: min(86vh, 900px);
+    padding: 0;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 10px 10px 0 var(--ink);
+  }
+  .event::backdrop {
+    background: rgb(0 0 0 / 0.55);
+  }
+  .event > article {
+    max-height: inherit;
+    overflow-y: auto;
+    padding: 24px clamp(20px, 4vw, 36px) 28px;
+  }
+
+  .head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1.5px solid var(--ink);
+    padding-bottom: 16px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    margin: 0 0 6px;
+  }
+  .head h2 {
+    font-size: clamp(34px, 6vw, 56px);
+    margin: 0;
+    line-height: 0.95;
+  }
+  .close {
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .close:hover,
+  .close:focus-visible {
+    background: var(--ink);
+    color: var(--paper);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 18px 0 0;
+    font-size: 12px;
+  }
+  .facts dt {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .facts dd { margin: 4px 0 0; line-height: 1.35; }
+  .accent { color: var(--accent); font-weight: 700; }
+
+  .intro {
+    font-size: 16px;
+    line-height: 1.45;
+    margin: 18px 0 0;
+    max-width: 54ch;
+  }
+
+  .tracks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-top: 22px;
+    border-top: 1.5px solid var(--ink);
+    border-left: 1.5px solid var(--ink);
+  }
+  .tracks section {
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 16px;
+  }
+  .tracks h3 { font-size: 19px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .tracks p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ink-2); }
+
+  .more { margin-top: 20px; }
+  .more summary {
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    padding: 10px 0;
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .agenda { list-style: none; margin: 14px 0 0; padding: 0; font-size: 12px; }
+  .agenda li {
+    display: flex;
+    gap: 16px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .agenda li span:first-child { width: 90px; color: var(--muted); flex-shrink: 0; }
+
+  .sponsors { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+  .sponsors li { display: grid; gap: 2px; font-size: 13px; }
+  .sponsors strong { font-size: 14px; }
+  .sponsors span:last-child { color: var(--ink-2); }
+  .supporters { margin: 14px 0 0; font-size: 11px; color: var(--muted); }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1.5px solid var(--ink);
+  }
+  .note { font-size: 11px; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    .facts { grid-template-columns: 1fr; gap: 10px; }
+    .tracks { grid-template-columns: 1fr; }
+  }
+</style>

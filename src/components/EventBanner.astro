@@ -1,0 +1,100 @@
+---
+import event from "@data/featured-event.json";
+
+/**
+ * Slim top bar for the event we're currently hosting, above the masthead.
+ *
+ * The bar is the permanent surface — it stays until the event passes — and
+ * the full details live in the modal it opens. That keeps a dated promotion
+ * out of the homepage layout itself.
+ */
+const { name, dateLabel, url, prizes } = event;
+const shortDate = new Date(event.date).toLocaleDateString("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+---
+
+<aside class="bar" data-event-bar aria-label={`Featured event: ${name}`}>
+  <div class="wrap inner font-mono upper">
+    <span class="lede">
+      <span class="dot" aria-hidden="true"></span>
+      We're hosting <strong>{name}</strong>
+    </span>
+
+    <span class="meta" aria-hidden="true">{shortDate} · {prizes} in prizes</span>
+
+    <span class="actions">
+      <button type="button" data-event-open>Details</button>
+      <a href={url} target="_blank" rel="noopener noreferrer">Register ↗</a>
+    </span>
+  </div>
+  <p class="sr-only">{name} — {dateLabel}. {prizes} in prizes.</p>
+</aside>
+
+<style>
+  .bar {
+    background: var(--accent);
+    color: var(--paper);
+    border-bottom: 1.5px solid var(--ink);
+  }
+
+  .inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 9px 0;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
+
+  .lede strong { font-weight: 700; }
+
+  .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 8px;
+    background: var(--paper);
+    border-radius: 999px;
+    vertical-align: middle;
+  }
+
+  .meta { opacity: 0.85; }
+
+  .actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .actions button,
+  .actions a {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--paper);
+    background: none;
+    border: 0;
+    padding: 2px 0;
+    border-bottom: 1px solid currentColor;
+    cursor: pointer;
+  }
+  .actions button:hover,
+  .actions a:hover,
+  .actions button:focus-visible,
+  .actions a:focus-visible {
+    color: var(--ink);
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 720px) {
+    .meta { display: none; }
+    .inner { gap: 10px; }
+  }
+</style>

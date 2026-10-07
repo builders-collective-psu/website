@@ -43,7 +43,18 @@ const { site } = Astro.props;
 
     <div class="right">
       <nav class="nav font-mono upper" aria-label="Main navigation">
-        {site.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+        {
+        site.nav.map((item) =>
+          /* The event has no section of its own any more — it lives in the
+             banner and the modal, so this entry opens the modal instead of
+             jumping to an anchor that does not exist. */
+          item.href === "#compiled" ? (
+            <button type="button" class="nav-link" data-event-open>{item.label}</button>
+          ) : (
+            <a href={item.href}>{item.label}</a>
+          ),
+        )
+      }
       </nav>
 
       <div class="tools">
@@ -152,12 +163,26 @@ const { site } = Astro.props;
     letter-spacing: 0.12em;
   }
 
-  .nav a {
+  .nav a,
+  .nav .nav-link {
     transition: color var(--dur-fast) ease;
   }
 
+  .nav .nav-link {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+  }
+
   .nav a:hover,
-  .nav a:focus-visible {
+  .nav a:focus-visible,
+  .nav .nav-link:hover,
+  .nav .nav-link:focus-visible {
     color: var(--accent);
     outline: 2px solid var(--accent);
     outline-offset: 3px;
