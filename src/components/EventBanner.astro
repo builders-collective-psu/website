@@ -8,7 +8,7 @@ import event from "@data/featured-event.json";
  * the full details live in the modal it opens. That keeps a dated promotion
  * out of the homepage layout itself.
  */
-const { name, dateLabel, url, prizes } = event;
+const { name, dateLabel } = event;
 const shortDate = new Date(event.date).toLocaleDateString("en-US", {
   month: "short",
   day: "numeric",
@@ -16,21 +16,20 @@ const shortDate = new Date(event.date).toLocaleDateString("en-US", {
 });
 ---
 
-<aside class="bar" data-event-bar aria-label={`Featured event: ${name}`}>
+<aside class="bar" data-event-bar aria-label={`Past event: ${name}`}>
   <div class="wrap inner font-mono upper">
     <span class="lede">
       <span class="dot" aria-hidden="true"></span>
-      We're hosting <strong>{name}</strong>
+      <strong>{name}</strong> has ended
     </span>
 
-    <span class="meta" aria-hidden="true">{shortDate} · {prizes} in prizes</span>
+    <span class="meta" aria-hidden="true">{shortDate} · Thanks for building with us</span>
 
     <span class="actions">
       <button type="button" data-event-open>Details</button>
-      <a href={url} target="_blank" rel="noopener noreferrer">Register ↗</a>
     </span>
   </div>
-  <p class="sr-only">{name} — {dateLabel}. {prizes} in prizes.</p>
+  <p class="sr-only">{name} ended on {dateLabel}.</p>
 </aside>
 
 <style>

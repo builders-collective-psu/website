@@ -37,6 +37,7 @@ const pad = (n: number) => n.toString().padStart(2, "0");
         hackathons.
       </p>
       <StatBlock label="HACKATHON WINS" value={stats.winsAllTime} />
+      <StatBlock label="LOGGED WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
       <StatBlock
         label="HACKATHONS"
         value={pad(stats.hackathons)}
@@ -49,7 +50,7 @@ const pad = (n: number) => n.toString().padStart(2, "0");
       <Button href="#apply" arrow="external">Apply to Build</Button>
       <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
       <button class="event-link font-mono upper" type="button" data-event-open>
-        We're hosting c0mpiled-15 ↗
+        c0mpiled-15 recap ↗
       </button>
     </div>
   </div>
@@ -86,7 +87,7 @@ const pad = (n: number) => n.toString().padStart(2, "0");
   .hero-sub {
     margin-top: 28px;
     display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr 1fr;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
     gap: 24px;
     border-top: 1.5px solid var(--ink);
     padding-top: 18px;
