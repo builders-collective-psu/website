@@ -2,11 +2,9 @@
 import event from "@data/featured-event.json";
 
 /**
- * Slim top bar for the event we're currently hosting, above the masthead.
- *
- * The bar is the permanent surface — it stays until the event passes — and
- * the full details live in the modal it opens. That keeps a dated promotion
- * out of the homepage layout itself.
+ * Slim strip above the masthead for the event we last hosted. The full
+ * details live in the modal it opens, which keeps a dated promotion out of
+ * the homepage layout itself.
  */
 const { name, dateLabel } = event;
 const shortDate = new Date(event.date).toLocaleDateString("en-US", {
@@ -16,27 +14,26 @@ const shortDate = new Date(event.date).toLocaleDateString("en-US", {
 });
 ---
 
-<aside class="bar" data-event-bar aria-label={`Past event: ${name}`}>
+<aside class="strip" data-event-bar aria-label={`Past event: ${name}`}>
   <div class="wrap inner font-mono upper">
-    <span class="lede">
-      <span class="dot" aria-hidden="true"></span>
-      <strong>{name}</strong> has ended
-    </span>
-
-    <span class="meta" aria-hidden="true">{shortDate} · Thanks for building with us</span>
-
-    <span class="actions">
-      <button type="button" data-event-open>Details</button>
-    </span>
+    <p class="lede">
+      <span class="mark" aria-hidden="true"></span>
+      <strong>{name}</strong>
+      <span class="sep" aria-hidden="true">/</span>
+      <span>Wrapped {shortDate}</span>
+      <span class="thanks">— thanks for building with us</span>
+    </p>
+    <button type="button" class="recap" data-event-open>
+      Recap <span aria-hidden="true">→</span>
+    </button>
   </div>
   <p class="sr-only">{name} ended on {dateLabel}.</p>
 </aside>
 
 <style>
-  .bar {
-    background: var(--accent);
+  .strip {
+    background: var(--ink);
     color: var(--paper);
-    border-bottom: 1.5px solid var(--ink);
   }
 
   .inner {
@@ -44,56 +41,53 @@ const shortDate = new Date(event.date).toLocaleDateString("en-US", {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    flex-wrap: wrap;
-    padding: 9px 0;
+    min-height: 34px;
+    /* Block padding only: .wrap owns the side gutters. */
+    padding-block: 8px;
     font-size: 11px;
     letter-spacing: 0.12em;
+  }
+
+  .lede {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   .lede strong { font-weight: 700; }
 
-  .dot {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    margin-right: 8px;
-    background: var(--paper);
-    border-radius: 999px;
-    vertical-align: middle;
+  .mark {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    background: var(--accent);
   }
 
-  .meta { opacity: 0.85; }
+  .sep,
+  .thanks { color: var(--inverse-muted); }
+  .thanks { overflow: hidden; text-overflow: ellipsis; }
 
-  .actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .actions button,
-  .actions a {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--paper);
+  .recap {
+    flex: none;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
     background: none;
     border: 0;
     padding: 2px 0;
-    border-bottom: 1px solid currentColor;
     cursor: pointer;
+    border-bottom: 1px solid var(--inverse-rule);
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
   }
-  .actions button:hover,
-  .actions a:hover,
-  .actions button:focus-visible,
-  .actions a:focus-visible {
-    color: var(--ink);
-    outline: 2px solid var(--ink);
-    outline-offset: 3px;
-  }
+  .recap:hover { color: var(--accent); border-color: var(--accent); }
+  .recap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
   @media (max-width: 720px) {
-    .meta { display: none; }
-    .inner { gap: 10px; }
+    .thanks { display: none; }
   }
 </style>
