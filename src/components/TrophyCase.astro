@@ -58,6 +58,11 @@ const meta = REAL_DATA
           ))
       }
     </div>
+    {REAL_DATA && (
+      <button type="button" class="trophy-toggle font-mono upper" data-trophy-toggle aria-expanded="false" hidden>
+        Show all
+      </button>
+    )}
     {!REAL_DATA && <details class="all-results"><summary class="font-mono upper">Explore all {log.events.length} builds & results <span aria-hidden="true">↳</span></summary><HackathonLog log={log} embedded /></details>}
   </div>
 </section>
@@ -95,33 +100,88 @@ const meta = REAL_DATA
         ? `$${Math.round(cents / 100).toLocaleString("en-US")}`
         : null;
 
-    function renderWin(win) {
+    // Bunker stores some names HTML-escaped (e.g. &#39;); show them plainly.
+    const decoder = document.createElement("textarea");
+    const plain = (text) => {
+      decoder.innerHTML = text == null ? "" : String(text);
+      return decoder.value;
+    };
+
+    // Colour and size step up with the count: 1, 2, 3, 4–5, 6+.
+    const tier = (n) => (n >= 6 ? 5 : n >= 4 ? 4 : n);
+
+    // One card per event. Every winning team is listed by its members, and the
+    // multiplier counts wins per person, matching the hero's figure.
+    function groupByEvent(wins) {
+      const groups = new Map();
+      wins.forEach((win) => {
+        const key = win.eventSlug || win.event;
+        if (!groups.has(key)) groups.set(key, { event: win.event, latest: win.createdAt, teams: [] });
+        const group = groups.get(key);
+        group.teams.push(win);
+        if (String(win.createdAt) > String(group.latest)) group.latest = win.createdAt;
+      });
+      return [...groups.values()]
+        .map((group) => ({
+          ...group,
+          count: group.teams.reduce((total, team) => total + Math.max(1, (team.people || []).length), 0),
+        }))
+        .sort((a, b) => String(b.latest).localeCompare(String(a.latest)));
+    }
+
+    function renderEvent(group) {
       const article = el("article", "trophy");
-      article.appendChild(el("div", "t-date font-mono", shortDate(win.createdAt)));
+      article.appendChild(el("div", "t-date font-mono", shortDate(group.latest)));
 
       const body = el("div", "t-body");
-      body.appendChild(el("h3", null, win.event));
+      body.appendChild(el("h3", null, plain(group.event)));
 
-      const detail = [win.track, win.team].filter(Boolean).join(" · ");
-      if (detail) body.appendChild(el("div", "where font-mono", detail));
-
-      const people = (win.people || []).join(", ");
-      if (people) body.appendChild(el("p", null, people));
-
-      const cash = money(win.prizeCents);
-      const prizeLine = [cash, win.prizeName].filter(Boolean).join(" + ");
-      if (prizeLine) body.appendChild(el("div", "t-prize font-mono", `↳ ${prizeLine}`));
-
+      const teams = el("ul", "t-teams");
+      group.teams.forEach((team) => {
+        const item = el("li");
+        const names = (team.people || []).map(plain).join(", ") || plain(team.team) || "—";
+        item.appendChild(el("span", "t-names", names));
+        const what = [plain(team.prizeName || team.placement || "Winner"), money(team.prizeCents)]
+          .filter(Boolean)
+          .join(" · ");
+        item.appendChild(el("span", "t-what font-mono", what));
+        teams.appendChild(item);
+      });
+      body.appendChild(teams);
       article.appendChild(body);
-      article.appendChild(el("div", "t-tag font-mono upper", win.placement || "★ WIN"));
+
+      const mult = el("div", `t-mult t-mult--${tier(group.count)} font-mono`, `${group.count}×`);
+      mult.setAttribute("aria-label", `${group.count} ${group.count === 1 ? "win" : "wins"}`);
+      mult.style.setProperty("--n", String(Math.min(group.count, 8)));
+      article.appendChild(mult);
       return article;
     }
+
+    const PREVIEW = 4;
+    const toggle = document.querySelector("[data-trophy-toggle]");
 
     window.__recaps
       .then((data) => {
         const wins = Array.isArray(data.wins) ? data.wins : [];
         if (!wins.length) return;
-        wins.forEach((win) => grid.appendChild(renderWin(win)));
+        const groups = groupByEvent(wins);
+        groups.forEach((group) => grid.appendChild(renderEvent(group)));
+
+        // Collapsed by default: a preview, then the rest on request.
+        if (toggle && groups.length > PREVIEW) {
+          const label = () =>
+            grid.classList.contains("is-collapsed") ? `Show all ${groups.length} events ↓` : "Show fewer ↑";
+          grid.classList.add("is-collapsed");
+          toggle.textContent = label();
+          toggle.hidden = false;
+          toggle.addEventListener("click", () => {
+            const collapsing = !grid.classList.contains("is-collapsed");
+            grid.classList.toggle("is-collapsed");
+            toggle.setAttribute("aria-expanded", String(!collapsing));
+            toggle.textContent = label();
+            if (collapsing) section?.scrollIntoView({ block: "start" });
+          });
+        }
         section?.removeAttribute("hidden");
       })
       .catch(() => {
@@ -212,6 +272,71 @@ const meta = REAL_DATA
       color var(--dur-fast) ease;
   }
 
+  .trophy-grid.is-collapsed :global(.trophy:nth-child(n + 5)) { display: none; }
+
+  .trophy-toggle {
+    display: block;
+    width: 100%;
+    padding: 18px 0;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-align: left;
+    color: var(--ink);
+    background: none;
+    border: 0;
+    border-bottom: 1.5px solid var(--ink);
+    cursor: pointer;
+  }
+  .trophy-toggle[hidden] { display: none; }
+  .trophy-toggle:hover { color: var(--accent); }
+  .trophy-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+  .trophy-grid :global(.t-teams) {
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .trophy-grid :global(.t-teams li) { display: grid; gap: 2px; }
+  .trophy-grid :global(.t-names) { font-size: 15px; font-weight: 600; line-height: 1.35; }
+  .trophy-grid :global(.t-what) {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* Win multiplier: bigger, hotter and livelier as the count climbs. */
+  .trophy-grid :global(.t-mult) {
+    --size: calc(18px + var(--n, 1) * 5px);
+    --tint: var(--muted);
+    align-self: start;
+    min-width: 2.2em;
+    font-size: var(--size);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    text-align: right;
+    color: var(--tint);
+    transform-origin: right center;
+    animation: t-zoom calc(2.8s - var(--n, 1) * 0.2s) ease-in-out infinite;
+  }
+  .trophy-grid :global(.t-mult--1) { --tint: var(--muted); animation: none; }
+  .trophy-grid :global(.t-mult--2) { --tint: var(--ink); }
+  .trophy-grid :global(.t-mult--3) { --tint: #E0A100; }
+  .trophy-grid :global(.t-mult--4) { --tint: var(--accent); }
+  .trophy-grid :global(.t-mult--5) { --tint: #E5254B; text-shadow: 0 0 18px color-mix(in srgb, #E5254B 45%, transparent); }
+
+  @keyframes t-zoom {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.18); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .trophy-grid :global(.t-mult) { animation: none; }
+  }
+
   .trophy-grid :global(.t-prize) {
     font-size: 12px;
     color: var(--accent);
@@ -224,13 +349,12 @@ const meta = REAL_DATA
     .trophy-grid :global(.trophy) {
       grid-column: span 12;
       border-right: none;
-      grid-template-columns: auto 1fr;
-      gap: 16px;
+      grid-template-columns: 1fr auto;
+      gap: 12px 16px;
+      padding: 24px 0;
     }
-    .trophy-grid :global(.trophy .t-tag) {
-      grid-column: 2;
-      justify-self: start;
-      margin-top: 4px;
-    }
+    .trophy-grid :global(.trophy .t-date) { grid-column: 1; grid-row: 1; justify-self: start; align-self: center; }
+    .trophy-grid :global(.trophy .t-mult) { grid-column: 2; grid-row: 1; align-self: center; }
+    .trophy-grid :global(.trophy .t-body) { grid-column: 1 / -1; grid-row: 2; }
   }
 </style>
