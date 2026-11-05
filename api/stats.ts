@@ -25,7 +25,11 @@ export default async function handler(): Promise<Response> {
 
     const unique = dedupeByTeam(recaps);
 
-    const wins = unique.filter((recap) => recap.won === true).length;
+    // Wins count per person: a team win is one outcome shared by every member,
+    // so two people winning one track is two wins.
+    const wins = unique
+      .filter((recap) => recap.won === true)
+      .reduce((total, recap) => total + Math.max(1, recap.teamMembers?.length ?? 1), 0);
     const hackathons = new Set(unique.map((recap) => recap.eventId)).size;
     const shipped = unique.length;
     const prizeCents = unique.reduce((total, recap) => total + (recap.prizeCents ?? 0), 0);
