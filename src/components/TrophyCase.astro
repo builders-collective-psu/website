@@ -141,8 +141,13 @@ const meta = REAL_DATA
           ...group,
           count: group.teams.reduce((total, team) => total + Math.max(1, (team.people || []).length), 0),
         }))
-        // Newest event first; events without a date go last.
-        .sort((a, b) => String(b.start || "").localeCompare(String(a.start || "")));
+        // Newest event first (by start, then end, then name); undated last.
+        .sort(
+          (a, b) =>
+            String(b.start || "").localeCompare(String(a.start || "")) ||
+            String(b.end || "").localeCompare(String(a.end || "")) ||
+            plain(a.event).localeCompare(plain(b.event)),
+        );
     }
 
     function renderEvent(group) {
