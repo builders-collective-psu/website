@@ -1,7 +1,7 @@
 ---
 import Button from "./ui/Button.astro";
-import StatBlock from "./ui/StatBlock.astro";
 import { REAL_DATA } from "@lib/flags";
+import trophies from "@data/trophies.json";
 
 interface StatsData {
   wins: number;
@@ -12,128 +12,441 @@ interface StatsData {
 
 interface Props {
   stats: StatsData;
-  location?: string;
+  endpoint?: string;
 }
 
-const { stats, location = "UNIVERSITY PARK, PA" } = Astro.props;
+const { stats, endpoint = "/api/recaps" } = Astro.props;
 
 const pad = (n: number) => n.toString().padStart(2, "0");
+
+const figures = [
+  { key: "wins", label: "Wins", value: stats.wins },
+  { key: "hackathons", label: "Hackathons", value: stats.hackathons },
+  { key: "shipped", label: "Shipped", value: stats.shipped },
+  { key: "members", label: "Members", value: stats.members },
+];
+
+// Without live data the log shows the checked-in mock trophies; with it, the
+// rows arrive from the platform after paint and skeleton bars hold the space.
+const mockRows = trophies.map((t) => ({
+  place: t.place === 1 ? "★ 1st" : `${t.place}th`,
+  event: t.event,
+  detail: t.track,
+}));
 ---
 
-<section class="hero" aria-labelledby="hero-heading">
-  <div class="wrap">
-    <p class="hero-eyebrow font-mono upper">PENN STATE UNIVERSITY · {location}</p>
+<section class="hero" aria-labelledby="hero-heading" data-hero>
+  <div class="bg" aria-hidden="true">
+    <div class="grid"></div>
+    <div class="grid grid--lit"></div>
+    <div class="glow"></div>
+  </div>
 
-    <h1 id="hero-heading" class="display hero-title upper">
-      WE SHIP<br />
-      <span class="amp">while</span> YOU<br />
-      SLEEP.
-    </h1>
-
-    <div class="hero-sub">
-      <p class="manifesto">
-        An elite team of Penn State engineers and designers who build for
-        hackathons.
-      </p>
-      <StatBlock label="HACKATHON WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
-      <StatBlock
-        label="HACKATHONS"
-        value={pad(stats.hackathons)}
-        field={REAL_DATA ? "hackathons" : undefined}
-      />
-      <StatBlock label="SHIPPED" value={pad(stats.shipped)} field={REAL_DATA ? "shipped" : undefined} />
-      <StatBlock label="MEMBERS" value={pad(stats.members)} field={REAL_DATA ? "members" : undefined} />
+  <div class="wrap inner">
+    <div class="topline font-mono upper">
+      <span><span class="pulse" aria-hidden="true"></span>Penn State · University Park</span>
+      <span class="clock" aria-label="Local time in State College">
+        State College <time data-clock>--:--</time>
+      </span>
     </div>
 
-    <div class="ctas">
-      <Button href="#apply" arrow="external">Apply to Build</Button>
-      <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
-      <button class="event-link font-mono upper" type="button" data-event-open>
-        c0mpiled-15 recap ↗
-      </button>
+    <div class="stage">
+      <h1 id="hero-heading" class="headline display upper">
+        <span class="line"><span>We ship</span></span>
+        <span class="line"><span><em>while</em> you</span></span>
+        <span class="line"><span>sleep.<i class="caret" aria-hidden="true"></i></span></span>
+      </h1>
+
+      <aside class="log" aria-label="Recent wins" data-log>
+        <div class="log-head font-mono upper">
+          <span>Build log</span>
+          <span class="live"><span class="pulse" aria-hidden="true"></span>Recent wins</span>
+        </div>
+        <div class="log-view">
+          <ul class="log-list font-mono" data-log-list>
+            {
+              REAL_DATA
+                ? Array.from({ length: 6 }, () => (
+                    <li class="row row--skeleton" aria-hidden="true">
+                      <span class="bar bar--s" />
+                      <span class="bar" />
+                    </li>
+                  ))
+                : [...mockRows, ...mockRows].map((row, i) => (
+                    <li class="row" aria-hidden={i >= mockRows.length ? "true" : undefined}>
+                      <span class="place upper">{row.place}</span>
+                      <span class="event">{row.event}</span>
+                      <span class="detail">{row.detail}</span>
+                    </li>
+                  ))
+            }
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <div class="base">
+      <div class="pitch">
+        <p>Penn State engineers and designers who build for hackathons.</p>
+        <div class="ctas">
+          <Button href="#apply" arrow="external">Apply to Build</Button>
+          <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
+        </div>
+      </div>
+
+      <dl class="figures">
+        {
+          figures.map((f) => (
+            <div class="figure">
+              <dt class="font-mono upper">{f.label}</dt>
+              <dd data-stat={REAL_DATA ? f.key : undefined} data-stat-format="pad">
+                {pad(f.value)}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
     </div>
   </div>
 </section>
 
+<script is:inline define:vars={{ endpoint, live: REAL_DATA }}>
+  (function () {
+    const hero = document.querySelector("[data-hero]");
+    if (!hero) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Cursor-lit grid. Only the custom properties change; CSS does the rest.
+    if (!reduced && window.matchMedia("(pointer: fine)").matches) {
+      let frame = 0;
+      hero.addEventListener("pointermove", (event) => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          const box = hero.getBoundingClientRect();
+          hero.style.setProperty("--mx", `${event.clientX - box.left}px`);
+          hero.style.setProperty("--my", `${event.clientY - box.top}px`);
+        });
+      });
+    }
+
+    // Local time where the building happens.
+    const clock = hero.querySelector("[data-clock]");
+    const format = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "America/New_York",
+    });
+    const tickClock = () => clock && (clock.textContent = format.format(new Date()));
+    tickClock();
+    setInterval(tickClock, 15000);
+
+    if (!live) return;
+
+    const log = hero.querySelector("[data-log]");
+    const list = hero.querySelector("[data-log-list]");
+
+    // Shared with the trophy case and recap feed so the page makes one request.
+    window.__recaps =
+      window.__recaps ||
+      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
+        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
+        return response.json();
+      });
+
+    // Bunker stores some names HTML-escaped (e.g. &#39;); show them plainly.
+    const decoder = document.createElement("textarea");
+    const plain = (text) => {
+      decoder.innerHTML = text || "";
+      return decoder.value;
+    };
+
+    // "3rd place" -> "3rd", "Winner"/empty -> "★ Win": the column is narrow.
+    const place = (text) => {
+      const ordinal = String(text || "").match(/\d+(st|nd|rd|th)/i);
+      return ordinal ? ordinal[0] : "★ Win";
+    };
+
+    const row = (win, hidden) => {
+      const li = document.createElement("li");
+      li.className = "row";
+      if (hidden) li.setAttribute("aria-hidden", "true");
+      const cells = [
+        ["place upper", place(win.placement)],
+        ["event", win.event],
+        ["detail", win.prizeName || win.track || (win.people || []).join(", ")],
+      ];
+      cells.forEach(([cls, text]) => {
+        const span = document.createElement("span");
+        span.className = cls;
+        span.textContent = plain(text);
+        li.appendChild(span);
+      });
+      return li;
+    };
+
+    window.__recaps
+      .then((data) => {
+        const wins = (Array.isArray(data.wins) ? data.wins : [])
+          .slice()
+          .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+          .slice(0, 14);
+        if (!wins.length) throw new Error("no wins");
+        list.replaceChildren(...wins.map((w) => row(w, false)), ...wins.map((w) => row(w, true)));
+        list.style.setProperty("--rows", String(wins.length));
+        log.setAttribute("data-ready", "");
+      })
+      .catch(() => {
+        hero.classList.add("hero--solo");
+        log.hidden = true;
+      });
+  })();
+</script>
+
 <style>
   .hero {
-    padding: 56px 0 48px;
-    border-bottom: 2px solid var(--ink);
+    --mx: 75%;
+    --my: 30%;
     position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-bottom: var(--rule-major) solid var(--ink);
   }
 
-  .hero-eyebrow {
-    font-size: 12px;
+  /* ---------- Background: blueprint grid lit by the cursor ---------- */
+  .bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--hairline) 1px, transparent 1px),
+      linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: -1px -1px;
+    mask-image: radial-gradient(ellipse 80% 90% at 70% 35%, #000 10%, transparent 75%);
+  }
+  .grid--lit {
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--accent) 55%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, transparent) 1px, transparent 1px);
+    mask-image: radial-gradient(220px circle at var(--mx) var(--my), #000, transparent 70%);
+  }
+  .glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(520px circle at var(--mx) var(--my), color-mix(in srgb, var(--accent) 10%, transparent), transparent 65%);
+  }
+
+  .inner { padding-block: 28px 40px; }
+
+  /* ---------- Top line ---------- */
+  .topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 11px;
     letter-spacing: 0.16em;
-    margin: 0 0 28px;
     color: var(--muted);
   }
+  .topline > span { display: inline-flex; align-items: center; gap: 10px; }
+  .clock time { color: var(--ink); font-variant-numeric: tabular-nums; }
 
-  .hero-title {
-    font-size: clamp(80px, 14vw, 220px);
-    font-weight: 700;
-    margin: 0;
-    line-height: 0.88;
+  .pulse {
+    width: 7px;
+    height: 7px;
+    background: var(--accent);
+    border-radius: 999px;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+    animation: pulse 2.4s ease-out infinite;
   }
-  .hero-title .amp {
-    color: var(--accent);
-    font-style: italic;
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+    70%, 100% { box-shadow: 0 0 0 8px transparent; }
+  }
+
+  /* ---------- Stage: headline + build log ---------- */
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 48px;
+    align-items: end;
+    margin-top: 40px;
+  }
+  .hero--solo .stage { grid-template-columns: 1fr; }
+
+  .headline {
+    margin: 0;
+    font-size: clamp(64px, 12vw, 200px);
+    line-height: 0.86;
+  }
+  .line { display: block; overflow: hidden; padding-bottom: 0.04em; }
+  .line > span {
+    display: inline-block;
+    animation: rise 900ms var(--ease-out) both;
+  }
+  .line:nth-child(2) > span { animation-delay: 90ms; }
+  .line:nth-child(3) > span { animation-delay: 180ms; }
+  @keyframes rise {
+    from { transform: translateY(105%); }
+    to { transform: none; }
+  }
+
+  .headline em {
     font-family: var(--font-serif);
     font-weight: 400;
-    letter-spacing: 0;
-  }
-
-  .hero-sub {
-    margin-top: 28px;
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
-    gap: 24px;
-    border-top: 1.5px solid var(--ink);
-    padding-top: 18px;
-  }
-
-  .manifesto {
-    font-size: 22px;
-    line-height: 1.18;
-    max-width: 36ch;
+    font-style: italic;
+    text-transform: lowercase;
     letter-spacing: -0.01em;
+    color: var(--accent);
+    padding-right: 0.06em;
+  }
+
+  .caret {
+    display: inline-block;
+    width: 0.09em;
+    height: 0.72em;
+    margin-left: 0.08em;
+    background: var(--accent);
+    vertical-align: baseline;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Build log: an always-dark terminal panel */
+  .log {
+    --panel: #0B1220;
+    --panel-ink: #F4F1EA;
+    --panel-rule: color-mix(in srgb, var(--panel-ink) 14%, transparent);
+    background: var(--panel);
+    color: var(--panel-ink);
+    border: 1px solid var(--ink);
+    box-shadow: 10px 10px 0 var(--accent);
+    animation: fade-in 700ms 300ms var(--ease-out) both;
+  }
+  /* On the dark theme the page is already this colour; lift the panel. */
+  :global(:root[data-theme="dark"]) .log { --panel: #151E31; }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .log { --panel: #151E31; }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .log-head {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    border-bottom: 1px solid var(--panel-rule);
+  }
+  .log-head .live { display: inline-flex; align-items: center; gap: 8px; color: color-mix(in srgb, var(--panel-ink) 65%, transparent); }
+
+  .log-view {
+    height: 300px;
+    overflow: hidden;
+    mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  }
+
+  .log-list {
+    --rows: 6;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    animation: scroll calc(var(--rows) * 2.6s) linear infinite;
+  }
+  .log:not([data-ready]) .log-list:has(.row--skeleton) { animation: none; }
+  .log:hover .log-list { animation-play-state: paused; }
+  @keyframes scroll { to { transform: translateY(-50%); } }
+
+  .log-list :global(.row) {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 2px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--panel-rule);
+    font-size: 12px;
+  }
+  .log-list :global(.place) { grid-row: span 2; color: var(--accent); font-size: 11px; letter-spacing: 0.08em; }
+  .log-list :global(.event) { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log-list :global(.detail) {
+    color: color-mix(in srgb, var(--panel-ink) 60%, transparent);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .log-list .row--skeleton { grid-template-columns: 64px 1fr; align-items: center; padding-block: 19px; }
+  .bar {
+    height: 8px;
+    background: linear-gradient(90deg, var(--panel-rule) 25%, color-mix(in srgb, var(--panel-ink) 26%, transparent) 50%, var(--panel-rule) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+  .bar--s { width: 48px; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* ---------- Base: pitch + figures ---------- */
+  .base {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) 2fr;
+    gap: 48px;
+    align-items: end;
+    margin-top: 44px;
+    padding-top: 24px;
+    border-top: var(--rule-major) solid var(--ink);
+  }
+  .pitch p {
+    margin: 0;
+    max-width: 30ch;
+    font-size: 20px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+
+  .figures {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     margin: 0;
   }
-
-  .ctas {
-    display: flex;
-    gap: 12px;
-    margin-top: 28px;
-    flex-wrap: wrap;
-    align-items: center;
+  .figure { padding-left: 20px; border-left: 1px solid var(--hairline); }
+  .figure dt { font-size: 11px; letter-spacing: 0.16em; color: var(--muted); }
+  .figure dd {
+    margin: 8px 0 0;
+    font-size: clamp(48px, 5.6vw, 88px);
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    font-variant-numeric: tabular-nums;
   }
 
-  .event-link {
-    border: 0;
-    background: none;
-    padding: 0 0 2px;
-    margin-left: 4px;
-    color: var(--accent);
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    border-bottom: 1px solid currentColor;
-    cursor: pointer;
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1080px) {
+    .stage { grid-template-columns: 1fr; align-items: start; }
+    .log { max-width: 520px; }
+    .base { grid-template-columns: 1fr; gap: 32px; }
   }
-  .event-link:hover,
-  .event-link:focus-visible {
-    color: var(--ink);
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
+  @media (max-width: 640px) {
+    .inner { padding-block: 20px 32px; }
+    .topline .clock { display: none; }
+    .stage { margin-top: 28px; gap: 32px; }
+    .headline { font-size: clamp(56px, 17vw, 96px); }
+    .log { box-shadow: 6px 6px 0 var(--accent); }
+    .log-view { height: 228px; }
+    .pitch p { font-size: 18px; }
+    .figures { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+    .figure:nth-child(odd) { padding-left: 0; border-left: 0; }
   }
 
-  @media (max-width: 900px) {
-    .hero-sub { grid-template-columns: 1fr 1fr; }
-    .manifesto { grid-column: 1 / -1; }
-  }
-  @media (max-width: 560px) {
-    .hero { padding: 36px 0 32px; }
-    .hero-eyebrow { font-size: 11px; }
-    .hero-sub { grid-template-columns: 1fr 1fr; gap: 18px; }
-    .manifesto { font-size: 18px; }
+  @media (prefers-reduced-motion: reduce) {
+    .line > span, .log, .pulse, .caret, .bar { animation: none; }
+    .log-list { animation: none; }
+    .log-view { overflow-y: auto; mask-image: none; }
+    .glow, .grid--lit { display: none; }
   }
 </style>
