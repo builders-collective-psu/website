@@ -13,11 +13,11 @@ export default defineConfig({
   },
   compressHTML: true,
   // `astro dev` cannot run the Vercel functions in /api, so in dev forward
-  // them to production. Keeps live figures working locally without the key.
+  // them to production (or API_PROXY). Keeps live figures working locally.
   vite: {
     server: {
       proxy: {
-        '/api': { target: 'https://www.psu.builders', changeOrigin: true },
+        '/api': { target: process.env.API_PROXY || 'https://www.psu.builders', changeOrigin: true },
       },
     },
   },

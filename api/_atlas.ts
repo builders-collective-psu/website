@@ -67,6 +67,8 @@ export interface Recap {
   eventId: string;
   eventName: string;
   eventSlug: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
   teamId: string | null;
   teamName: string | null;
   won: boolean | null;

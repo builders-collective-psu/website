@@ -150,6 +150,8 @@ export default async function handler(): Promise<Response> {
         id: recap.id,
         event: recap.eventName,
         eventSlug: recap.eventSlug,
+        eventStart: recap.eventStartDate ?? null,
+        eventEnd: recap.eventEndDate ?? null,
         placement: recap.placement,
         prizeName: recap.prizeName,
         prizeCents: recap.prizeCents,

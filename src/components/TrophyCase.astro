@@ -89,10 +89,21 @@ const meta = REAL_DATA
       return node;
     };
 
-    const shortDate = (iso) => {
-      const date = new Date(iso);
-      if (Number.isNaN(date.getTime())) return "";
-      return `${String(date.getMonth() + 1).padStart(2, "0")} / ${String(date.getFullYear()).slice(2)}`;
+    // "Oct 17–18, 2026" from the platform's YYYY-MM-DD start and end.
+    const eventDates = (start, end) => {
+      if (!start) return "";
+      const parse = (iso) => {
+        const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+        return { y, m, d, date: new Date(Date.UTC(y, m - 1, d)) };
+      };
+      const month = (p) => p.date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+      const a = parse(start);
+      const b = end ? parse(end) : a;
+      if (Number.isNaN(a.date.getTime())) return "";
+      if (a.y === b.y && a.m === b.m && a.d === b.d) return `${month(a)} ${a.d}, ${a.y}`;
+      if (a.y === b.y && a.m === b.m) return `${month(a)} ${a.d}–${b.d}, ${a.y}`;
+      if (a.y === b.y) return `${month(a)} ${a.d} – ${month(b)} ${b.d}, ${a.y}`;
+      return `${month(a)} ${a.d}, ${a.y} – ${month(b)} ${b.d}, ${b.y}`;
     };
 
     const money = (cents) =>
@@ -115,26 +126,31 @@ const meta = REAL_DATA
     function groupByEvent(wins) {
       const groups = new Map();
       wins.forEach((win) => {
-        const key = win.eventSlug || win.event;
-        if (!groups.has(key)) groups.set(key, { event: win.event, latest: win.createdAt, teams: [] });
+        // Keyed by name, not slug: the platform has some events entered twice.
+        const key = plain(win.event).toLowerCase().replace(/\s+/g, " ").trim();
+        if (!groups.has(key)) groups.set(key, { event: win.event, start: null, end: null, teams: [] });
         const group = groups.get(key);
         group.teams.push(win);
-        if (String(win.createdAt) > String(group.latest)) group.latest = win.createdAt;
+        if (!group.start && win.eventStart) {
+          group.start = win.eventStart;
+          group.end = win.eventEnd || null;
+        }
       });
       return [...groups.values()]
         .map((group) => ({
           ...group,
           count: group.teams.reduce((total, team) => total + Math.max(1, (team.people || []).length), 0),
         }))
-        .sort((a, b) => String(b.latest).localeCompare(String(a.latest)));
+        // Newest event first; events without a date go last.
+        .sort((a, b) => String(b.start || "").localeCompare(String(a.start || "")));
     }
 
     function renderEvent(group) {
       const article = el("article", "trophy");
-      article.appendChild(el("div", "t-date font-mono", shortDate(group.latest)));
-
       const body = el("div", "t-body");
       body.appendChild(el("h3", null, plain(group.event)));
+      const when = eventDates(group.start, group.end);
+      if (when) body.appendChild(el("div", "t-when font-mono upper", when));
 
       const teams = el("ul", "t-teams");
       group.teams.forEach((team) => {
@@ -152,7 +168,6 @@ const meta = REAL_DATA
 
       const mult = el("div", `t-mult t-mult--${tier(group.count)} font-mono`, `${group.count}×`);
       mult.setAttribute("aria-label", `${group.count} ${group.count === 1 ? "win" : "wins"}`);
-      mult.style.setProperty("--n", String(Math.min(group.count, 8)));
       article.appendChild(mult);
       return article;
     }
@@ -217,7 +232,7 @@ const meta = REAL_DATA
     border-right: 1.5px solid var(--ink);
     padding: 28px 24px 24px;
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     gap: 20px;
     align-items: start;
     transition: background var(--dur-normal) ease;
@@ -291,6 +306,13 @@ const meta = REAL_DATA
   .trophy-toggle:hover { color: var(--accent); }
   .trophy-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
+  .trophy-grid :global(.t-when) {
+    margin-top: 6px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+
   .trophy-grid :global(.t-teams) {
     list-style: none;
     margin: 14px 0 0;
@@ -309,18 +331,17 @@ const meta = REAL_DATA
 
   /* Win multiplier: bigger, hotter and livelier as the count climbs. */
   .trophy-grid :global(.t-mult) {
-    --size: calc(18px + var(--n, 1) * 5px);
     --tint: var(--muted);
     align-self: start;
     min-width: 2.2em;
-    font-size: var(--size);
+    font-size: 40px;
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.04em;
     text-align: right;
     color: var(--tint);
     transform-origin: right center;
-    animation: t-zoom calc(2.8s - var(--n, 1) * 0.2s) ease-in-out infinite;
+    animation: t-zoom 4s ease-in-out infinite;
   }
   .trophy-grid :global(.t-mult--1) { --tint: var(--muted); animation: none; }
   .trophy-grid :global(.t-mult--2) { --tint: var(--ink); }
@@ -330,7 +351,7 @@ const meta = REAL_DATA
 
   @keyframes t-zoom {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.18); }
+    50% { transform: scale(1.12); }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -353,8 +374,6 @@ const meta = REAL_DATA
       gap: 12px 16px;
       padding: 24px 0;
     }
-    .trophy-grid :global(.trophy .t-date) { grid-column: 1; grid-row: 1; justify-self: start; align-self: center; }
-    .trophy-grid :global(.trophy .t-mult) { grid-column: 2; grid-row: 1; align-self: center; }
-    .trophy-grid :global(.trophy .t-body) { grid-column: 1 / -1; grid-row: 2; }
+    .trophy-grid :global(.trophy .t-mult) { font-size: 32px; }
   }
 </style>
