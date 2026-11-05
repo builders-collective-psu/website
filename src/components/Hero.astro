@@ -1,7 +1,6 @@
 ---
 import Button from "./ui/Button.astro";
 import { REAL_DATA } from "@lib/flags";
-import trophies from "@data/trophies.json";
 
 interface StatsData {
   wins: number;
@@ -12,10 +11,9 @@ interface StatsData {
 
 interface Props {
   stats: StatsData;
-  endpoint?: string;
 }
 
-const { stats, endpoint = "/api/recaps" } = Astro.props;
+const { stats } = Astro.props;
 
 const pad = (n: number) => n.toString().padStart(2, "0");
 
@@ -26,13 +24,6 @@ const figures = [
   { key: "members", label: "Members", value: stats.members },
 ];
 
-// Without live data the log shows the checked-in mock trophies; with it, the
-// rows arrive from the platform after paint and skeleton bars hold the space.
-const mockRows = trophies.map((t) => ({
-  place: t.place === 1 ? "★ 1st" : `${t.place}th`,
-  event: t.event,
-  detail: t.track,
-}));
 ---
 
 <section class="hero" aria-labelledby="hero-heading" data-hero>
@@ -56,33 +47,6 @@ const mockRows = trophies.map((t) => ({
         <span class="line"><span><em>while</em> you</span></span>
         <span class="line"><span>sleep.<i class="caret" aria-hidden="true"></i></span></span>
       </h1>
-
-      <aside class="log" aria-label="Recent wins" data-log>
-        <div class="log-head font-mono upper">
-          <span>Build log</span>
-          <span class="live"><span class="pulse" aria-hidden="true"></span>Recent wins</span>
-        </div>
-        <div class="log-view">
-          <ul class="log-list font-mono" data-log-list>
-            {
-              REAL_DATA
-                ? Array.from({ length: 6 }, () => (
-                    <li class="row row--skeleton" aria-hidden="true">
-                      <span class="bar bar--s" />
-                      <span class="bar" />
-                    </li>
-                  ))
-                : [...mockRows, ...mockRows].map((row, i) => (
-                    <li class="row" aria-hidden={i >= mockRows.length ? "true" : undefined}>
-                      <span class="place upper">{row.place}</span>
-                      <span class="event">{row.event}</span>
-                      <span class="detail">{row.detail}</span>
-                    </li>
-                  ))
-            }
-          </ul>
-        </div>
-      </aside>
     </div>
 
     <div class="base">
@@ -110,7 +74,7 @@ const mockRows = trophies.map((t) => ({
   </div>
 </section>
 
-<script is:inline define:vars={{ endpoint, live: REAL_DATA }}>
+<script is:inline>
   (function () {
     const hero = document.querySelector("[data-hero]");
     if (!hero) return;
@@ -140,65 +104,6 @@ const mockRows = trophies.map((t) => ({
     tickClock();
     setInterval(tickClock, 15000);
 
-    if (!live) return;
-
-    const log = hero.querySelector("[data-log]");
-    const list = hero.querySelector("[data-log-list]");
-
-    // Shared with the trophy case and recap feed so the page makes one request.
-    window.__recaps =
-      window.__recaps ||
-      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
-        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
-        return response.json();
-      });
-
-    // Bunker stores some names HTML-escaped (e.g. &#39;); show them plainly.
-    const decoder = document.createElement("textarea");
-    const plain = (text) => {
-      decoder.innerHTML = text || "";
-      return decoder.value;
-    };
-
-    // "3rd place" -> "3rd", "Winner"/empty -> "★ Win": the column is narrow.
-    const place = (text) => {
-      const ordinal = String(text || "").match(/\d+(st|nd|rd|th)/i);
-      return ordinal ? ordinal[0] : "★ Win";
-    };
-
-    const row = (win, hidden) => {
-      const li = document.createElement("li");
-      li.className = "row";
-      if (hidden) li.setAttribute("aria-hidden", "true");
-      const cells = [
-        ["place upper", place(win.placement)],
-        ["event", win.event],
-        ["detail", win.prizeName || win.track || (win.people || []).join(", ")],
-      ];
-      cells.forEach(([cls, text]) => {
-        const span = document.createElement("span");
-        span.className = cls;
-        span.textContent = plain(text);
-        li.appendChild(span);
-      });
-      return li;
-    };
-
-    window.__recaps
-      .then((data) => {
-        const wins = (Array.isArray(data.wins) ? data.wins : [])
-          .slice()
-          .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-          .slice(0, 14);
-        if (!wins.length) throw new Error("no wins");
-        list.replaceChildren(...wins.map((w) => row(w, false)), ...wins.map((w) => row(w, true)));
-        list.style.setProperty("--rows", String(wins.length));
-        log.setAttribute("data-ready", "");
-      })
-      .catch(() => {
-        hero.classList.add("hero--solo");
-        log.hidden = true;
-      });
   })();
 </script>
 
@@ -264,19 +169,13 @@ const mockRows = trophies.map((t) => ({
     70%, 100% { box-shadow: 0 0 0 8px transparent; }
   }
 
-  /* ---------- Stage: headline + build log ---------- */
-  .stage {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
-    gap: 48px;
-    align-items: end;
-    margin-top: 40px;
-  }
-  .hero--solo .stage { grid-template-columns: 1fr; }
+  /* ---------- Headline ---------- */
+  .stage { margin-top: 40px; }
 
   .headline {
+    max-width: 100%;
     margin: 0;
-    font-size: clamp(64px, 12vw, 200px);
+    font-size: clamp(64px, min(15vw, 22svh), 290px);
     line-height: 0.86;
   }
   .line { display: block; overflow: hidden; padding-bottom: 0.04em; }
@@ -312,83 +211,6 @@ const mockRows = trophies.map((t) => ({
   }
   @keyframes blink { 50% { opacity: 0; } }
 
-  /* Build log: an always-dark terminal panel */
-  .log {
-    --panel: #0B1220;
-    --panel-ink: #F4F1EA;
-    --panel-rule: color-mix(in srgb, var(--panel-ink) 14%, transparent);
-    background: var(--panel);
-    color: var(--panel-ink);
-    border: 1px solid var(--ink);
-    box-shadow: 10px 10px 0 var(--accent);
-    animation: fade-in 700ms 300ms var(--ease-out) both;
-  }
-  /* On the dark theme the page is already this colour; lift the panel. */
-  :global(:root[data-theme="dark"]) .log { --panel: #151E31; }
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme="light"])) .log { --panel: #151E31; }
-  }
-
-  @keyframes fade-in {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: none; }
-  }
-
-  .log-head {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 16px;
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    border-bottom: 1px solid var(--panel-rule);
-  }
-  .log-head .live { display: inline-flex; align-items: center; gap: 8px; color: color-mix(in srgb, var(--panel-ink) 65%, transparent); }
-
-  .log-view {
-    height: 300px;
-    overflow: hidden;
-    mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
-  }
-
-  .log-list {
-    --rows: 6;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    animation: scroll calc(var(--rows) * 2.6s) linear infinite;
-  }
-  .log:not([data-ready]) .log-list:has(.row--skeleton) { animation: none; }
-  .log:hover .log-list { animation-play-state: paused; }
-  @keyframes scroll { to { transform: translateY(-50%); } }
-
-  .log-list :global(.row) {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
-    column-gap: 12px;
-    row-gap: 2px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--panel-rule);
-    font-size: 12px;
-  }
-  .log-list :global(.place) { grid-row: span 2; color: var(--accent); font-size: 11px; letter-spacing: 0.08em; }
-  .log-list :global(.event) { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .log-list :global(.detail) {
-    color: color-mix(in srgb, var(--panel-ink) 60%, transparent);
-    font-size: 11px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .log-list .row--skeleton { grid-template-columns: 64px 1fr; align-items: center; padding-block: 19px; }
-  .bar {
-    height: 8px;
-    background: linear-gradient(90deg, var(--panel-rule) 25%, color-mix(in srgb, var(--panel-ink) 26%, transparent) 50%, var(--panel-rule) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s linear infinite;
-  }
-  .bar--s { width: 48px; }
-  @keyframes shimmer { to { background-position: -200% 0; } }
 
   /* ---------- Base: pitch + figures ---------- */
   .base {
@@ -427,26 +249,20 @@ const mockRows = trophies.map((t) => ({
 
   /* ---------- Responsive ---------- */
   @media (max-width: 1080px) {
-    .stage { grid-template-columns: 1fr; align-items: start; }
-    .log { max-width: 520px; }
     .base { grid-template-columns: 1fr; gap: 32px; }
   }
   @media (max-width: 640px) {
     .inner { padding-block: 20px 32px; }
     .topline .clock { display: none; }
-    .stage { margin-top: 28px; gap: 32px; }
+    .stage { margin-top: 28px; }
     .headline { font-size: clamp(56px, 17vw, 96px); }
-    .log { box-shadow: 6px 6px 0 var(--accent); }
-    .log-view { height: 228px; }
     .pitch p { font-size: 18px; }
     .figures { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
     .figure:nth-child(odd) { padding-left: 0; border-left: 0; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .line > span, .log, .pulse, .caret, .bar { animation: none; }
-    .log-list { animation: none; }
-    .log-view { overflow-y: auto; mask-image: none; }
+    .line > span, .pulse, .caret { animation: none; }
     .glow, .grid--lit { display: none; }
   }
 </style>
