@@ -30,7 +30,7 @@ const fmtCash = (n: number) =>
   n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
 
 const meta = REAL_DATA
-  ? '<span data-stat="wins">—</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal">—</span> IN PRIZES'
+  ? '<span data-stat="teamWins" data-stat-guess="30">—</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal" data-stat-prefix="$" data-stat-guess="2000">—</span> IN PRIZES'
   : `${mockWins.length} FIRST-PLACE FINISHES · $${mockPrize.toLocaleString("en-US")} IN PRIZES`;
 ---
 

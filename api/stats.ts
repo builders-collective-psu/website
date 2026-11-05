@@ -5,6 +5,28 @@ export const config = { runtime: "edge" };
 interface Member {
   id: string;
   banned?: boolean | null;
+  graduation?: string | null;
+  title?: string | null;
+  bio?: string | null;
+  linkedin?: string | null;
+  github?: string | null;
+  discord?: string | null;
+  psuEmail?: string | null;
+  devpost?: string | null;
+}
+
+const PROFILE_FIELDS = ["title", "bio", "linkedin", "github", "discord", "psuEmail", "devpost", "graduation"] as const;
+
+/** Members who have filled in any profile data and have not graduated yet. */
+function currentMembers(members: Member[], now = new Date()): number {
+  // graduation is a "YYYY-MM" month; it counts as graduated once that month is over.
+  const thisMonth = now.toISOString().slice(0, 7);
+  return members.filter(
+    (member) =>
+      !member.banned &&
+      PROFILE_FIELDS.some((field) => !!member[field]) &&
+      !(member.graduation && member.graduation < thisMonth),
+  ).length;
 }
 
 /**
@@ -38,10 +60,12 @@ export default async function handler(): Promise<Response> {
     const hackathons = new Set(unique.map((recap) => recap.eventId)).size;
     const shipped = unique.length;
     const prizeCents = unique.reduce((total, recap) => total + (recap.prizeCents ?? 0), 0);
-    const activeMembers = members.filter((member) => !member.banned).length;
+    const activeMembers = currentMembers(members);
+    const teamWins = unique.filter((recap) => recap.won === true).length;
 
     return json({
       wins,
+      teamWins,
       hackathons,
       shipped,
       members: activeMembers || null,

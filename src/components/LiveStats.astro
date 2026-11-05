@@ -1,8 +1,9 @@
 ---
 import { REAL_DATA } from "@lib/flags";
 /**
- * Fills in any [data-stat] figure on the page from /api/stats.json after the
- * page has painted.
+ * Fills in any [data-stat] figure on the page from /api/stats after the page
+ * has painted. While the request is in flight each figure ticks upward from
+ * zero (a simulated skeleton), then glides to the real number.
  *
  * The markup ships with the last known numbers already in place, so the page
  * is complete and readable before this runs, and stays correct if the request
@@ -21,26 +22,85 @@ const { endpoint = "/api/stats" } = Astro.props;
 {REAL_DATA && (
   <script is:inline define:vars={{ endpoint }}>
   (function () {
-    const targets = document.querySelectorAll("[data-stat]");
-    if (!targets.length) return;
+    const nodes = Array.from(document.querySelectorAll("[data-stat]"));
+    if (!nodes.length) return;
 
-    targets.forEach((el) => el.setAttribute("data-state", "loading"));
-
-    const settle = (el, text) => {
-      if (typeof text === "string" && text.length) el.textContent = text;
-      el.removeAttribute("data-state");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const parseNumber = (text) => {
+      const match = String(text).match(/\d[\d,]*(\.\d+)?/);
+      return match ? { value: Number(match[0].replace(/,/g, "")), index: match.index, length: match[0].length } : null;
     };
 
-    // Only the big hero figures are zero-padded (they read as "06"); the same
-    // number inline in a sentence must stay "6". Elements opt in with
-    // data-stat-format="pad". Pre-formatted strings from the API pass through.
-    const format = (value, pad) => {
-      if (value === null || value === undefined) return null;
-      if (typeof value === "string") return value;
-      if (typeof value !== "number" || !Number.isFinite(value)) return null;
-      if (pad && value < 10) return String(value).padStart(2, "0");
-      return value.toLocaleString("en-US");
+    // Each figure remembers what the build put there (the fallback), how to
+    // format a number back into its text, and a simulated target to tick
+    // toward while the real number is in flight.
+    const items = nodes.map((el) => {
+      const original = el.textContent.trim();
+      const found = parseNumber(original);
+      const prefix = el.getAttribute("data-stat-prefix") ?? (found ? original.slice(0, found.index) : "");
+      const suffix = found ? original.slice(found.index + found.length) : "";
+      const guess = Number(el.getAttribute("data-stat-guess")) || (found && found.value) || 50;
+      return {
+        el,
+        original,
+        fallback: found ? found.value : null,
+        pad: el.getAttribute("data-stat-format") === "pad",
+        prefix,
+        suffix,
+        guess,
+        shown: 0,
+        frame: 0,
+        started: performance.now(),
+      };
+    });
+
+    const render = (item, n) => {
+      const whole = Math.round(n);
+      const body = item.pad && whole < 10 ? String(whole).padStart(2, "0") : whole.toLocaleString("en-US");
+      item.el.textContent = item.prefix + body + item.suffix;
     };
+
+    // Skeleton state: count upward from zero, easing toward the expected
+    // figure and never quite reaching it, so it reads as "still working".
+    const tick = (item) => {
+      const elapsed = performance.now() - item.started;
+      item.shown = item.guess * 0.97 * (1 - Math.exp(-elapsed / 900));
+      render(item, item.shown);
+      item.frame = requestAnimationFrame(() => tick(item));
+    };
+
+    // Land on the real number: glide from wherever the tick got to.
+    const settle = (item, target, finalText) => {
+      cancelAnimationFrame(item.frame);
+      item.el.removeAttribute("data-state");
+      if (target === null) {
+        item.el.textContent = item.original;
+        return;
+      }
+      if (reduced) {
+        if (finalText) item.el.textContent = finalText;
+        else render(item, target);
+        return;
+      }
+      const from = item.shown;
+      const begin = performance.now();
+      const duration = 900;
+      const step = (now) => {
+        const t = Math.min(1, (now - begin) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        render(item, from + (target - from) * eased);
+        if (t < 1) item.frame = requestAnimationFrame(step);
+        else if (finalText) item.el.textContent = finalText;
+      };
+      item.frame = requestAnimationFrame(step);
+    };
+
+    if (!reduced) {
+      items.forEach((item) => {
+        item.el.setAttribute("data-state", "loading");
+        tick(item);
+      });
+    }
 
     fetch(endpoint, { headers: { accept: "application/json" } })
       .then((response) => {
@@ -48,16 +108,17 @@ const { endpoint = "/api/stats" } = Astro.props;
         return response.json();
       })
       .then((data) => {
-        targets.forEach((el) => {
-          const key = el.getAttribute("data-stat");
-          const pad = el.getAttribute("data-stat-format") === "pad";
-          settle(el, format(key ? data[key] : null, pad));
+        items.forEach((item) => {
+          const value = data[item.el.getAttribute("data-stat")];
+          if (typeof value === "number" && Number.isFinite(value)) settle(item, value, null);
+          else if (typeof value === "string" && parseNumber(value)) settle(item, parseNumber(value).value, value);
+          else settle(item, item.fallback, null);
         });
       })
       .catch(() => {
         // Keep whatever was rendered at build time. A stale-but-real number
         // beats an error state in a hero.
-        targets.forEach((el) => el.removeAttribute("data-state"));
+        items.forEach((item) => settle(item, item.fallback, null));
       });
   })();
   </script>

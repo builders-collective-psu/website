@@ -39,19 +39,8 @@ const { label, value, caption, accent = false, field } = Astro.props;
   }
   .v.accent { color: var(--accent); }
 
-  /* While a live figure is in flight the placeholder dims slightly, then
-     settles when the real number lands. Never a spinner — the static number
-     is already correct enough to read. */
-  .v[data-stat] {
-    transition: opacity var(--dur-normal) ease;
-  }
-  .v[data-stat][data-state="loading"] {
-    opacity: 0.45;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .v[data-stat] { transition: none; }
-  }
+  /* While a live figure is in flight the number ticks upward (see
+     LiveStats), which doubles as the loading state. */
   .s {
     font-size: 12px;
     margin-top: 6px;

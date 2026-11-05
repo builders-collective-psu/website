@@ -7,8 +7,7 @@ interface StatsData {
   wins: number;
   hackathons: number;
   shipped: number;
-  /** All-time claim, deliberately not wired to the API — see README of stats. */
-  winsAllTime: string;
+  members: number;
 }
 
 interface Props {
@@ -36,14 +35,14 @@ const pad = (n: number) => n.toString().padStart(2, "0");
         An elite team of Penn State engineers and designers who build for
         hackathons.
       </p>
-      <StatBlock label="HACKATHON WINS" value={stats.winsAllTime} />
-      <StatBlock label="LOGGED WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
+      <StatBlock label="HACKATHON WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
       <StatBlock
         label="HACKATHONS"
         value={pad(stats.hackathons)}
         field={REAL_DATA ? "hackathons" : undefined}
       />
       <StatBlock label="SHIPPED" value={pad(stats.shipped)} field={REAL_DATA ? "shipped" : undefined} />
+      <StatBlock label="MEMBERS" value={pad(stats.members)} field={REAL_DATA ? "members" : undefined} />
     </div>
 
     <div class="ctas">
