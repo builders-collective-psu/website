@@ -18,18 +18,23 @@ interface Member {
  */
 export default async function handler(): Promise<Response> {
   try {
-    const [recaps, members] = await Promise.all([
+    const [recaps, members, leaderboard] = await Promise.all([
       call<Recap[]>("/community/feed"),
       call<Member[]>("/community/members").catch(() => [] as Member[]),
+      call<{ wins: number }[]>("/community/leaderboard").catch(() => null),
     ]);
 
     const unique = dedupeByTeam(recaps);
 
-    // Wins count per person: a team win is one outcome shared by every member,
-    // so two people winning one track is two wins.
-    const wins = unique
+    // Wins count per person: two people winning one track is two wins. The
+    // platform's leaderboard already tallies exactly that per member, so its
+    // sum is the source of truth. The feed-derived figure is only a fallback:
+    // it misses wins the feed's team rows do not list members for.
+    const feedWins = unique
       .filter((recap) => recap.won === true)
       .reduce((total, recap) => total + Math.max(1, recap.teamMembers?.length ?? 1), 0);
+    const leaderboardWins = leaderboard?.reduce((total, row) => total + (row.wins ?? 0), 0) ?? 0;
+    const wins = leaderboardWins || feedWins;
     const hackathons = new Set(unique.map((recap) => recap.eventId)).size;
     const shipped = unique.length;
     const prizeCents = unique.reduce((total, recap) => total + (recap.prizeCents ?? 0), 0);
