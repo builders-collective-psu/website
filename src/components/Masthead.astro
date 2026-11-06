@@ -19,6 +19,9 @@ interface Props {
 }
 
 const { site } = Astro.props;
+// Section links (#team) point at the homepage when on another page (/blog).
+const onHome = Astro.url.pathname === "/";
+const hrefFor = (href: string) => (href.startsWith("#") && !onHome ? `/${href}` : href);
 ---
 
 <header class="masthead" aria-label="Site header">
@@ -30,7 +33,7 @@ const { site } = Astro.props;
     </a>
 
     <nav class="nav font-mono upper" aria-label="Main navigation">
-      {site.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+      {site.nav.map((item) => <a href={hrefFor(item.href)}>{item.label}</a>)}
     </nav>
 
     <div class="actions">

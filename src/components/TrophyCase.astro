@@ -179,6 +179,9 @@ const meta = REAL_DATA
             window.__sfx && window.__sfx.select();
           };
           card.addEventListener("click", pick);
+          card.dataset.index = String(i);
+          // Focusing an event shows it on the right and scrolls the list to it.
+          card.addEventListener("focus", () => ei !== i && goEvent(i));
           card.addEventListener("keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -248,7 +251,27 @@ const meta = REAL_DATA
       spring(card);
     }
 
-    function renderProgress() {
+    // Hovering an event shows it on the right and scrolls the list to centre
+    // it. Only real pointer movement counts: when the list scrolls, a new card
+    // slides under a still pointer and the browser reports it at the same
+    // coordinates — ignoring those keeps it from chasing itself down the list.
+    let lastX = -1;
+    let lastY = -1;
+    let hoverTimer = 0;
+    list.addEventListener("pointermove", (event) => {
+      if (event.clientX === lastX && event.clientY === lastY) return;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      const card = event.target instanceof Element ? event.target.closest(".trophy") : null;
+      if (!card) return;
+      const i = Number(card.dataset.index);
+      clearTimeout(hoverTimer);
+      // A short wait so sweeping the pointer across the list does not flicker.
+      hoverTimer = setTimeout(() => ei !== i && goEvent(i), 140);
+    });
+    list.addEventListener("pointerleave", () => clearTimeout(hoverTimer));
+
+    function renderProgress({ scroll = true } = {}) {
       const event = events[ei];
       const project = event.projects[pi];
       const bits = [`Project ${pi + 1}/${event.projects.length}`];
@@ -256,7 +279,7 @@ const meta = REAL_DATA
       progress.textContent = bits.join("  ·  ");
       [...list.children].forEach((item, i) => item.classList.toggle("is-on", i === ei));
       const active = list.children[ei];
-      if (active) {
+      if (active && scroll) {
         // Scroll the list, not the page.
         const top = active.offsetTop - list.clientHeight / 2 + active.clientHeight / 2;
         list.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
@@ -269,13 +292,13 @@ const meta = REAL_DATA
       return project.larps.length ? HOLD_PROJECT : HOLD_ALONE;
     }
 
-    function goEvent(i) {
+    function goEvent(i, { scroll = true } = {}) {
       ei = (i + events.length) % events.length;
       pi = 0;
       li = -1;
       renderProject();
       renderLarp();
-      renderProgress();
+      renderProgress({ scroll });
       beatsLeft = hold();
     }
 
