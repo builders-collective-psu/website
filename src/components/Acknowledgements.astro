@@ -46,7 +46,6 @@ import ack from "@data/acknowledgements.json";
   .grid {
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    border-top: 1.5px solid var(--ink);
   }
 
   /* Faculty */
@@ -88,6 +87,7 @@ import ack from "@data/acknowledgements.json";
   .co { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; color: var(--ink); }
   .co img { display: block; height: 32px; width: auto; max-width: 100%; object-fit: contain; filter: brightness(0); opacity: 0.85; }
   .co--mark img { height: 26px; }
+  .co img[src$="aws.svg"] { height: 40px; }
   .co-name { font-weight: 700; font-size: 19px; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
   .co--word .co-name { font-size: 17px; white-space: normal; text-align: center; }
   .co:hover img { opacity: 1; }

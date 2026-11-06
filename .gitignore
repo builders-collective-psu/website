@@ -41,3 +41,4 @@ DEPLOY.md
 
 # docker (homelab config)
 docker-compose.yml
+.vercel
