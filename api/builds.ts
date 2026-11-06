@@ -74,8 +74,13 @@ export default async function handler(): Promise<Response> {
         group.end = recap.eventEndDate ?? null;
       }
       const info = devpost.get(recap.id);
-      const photos = candidates(recap).filter((url) => ok.has(url));
-      if (info?.image) photos.push(info.image);
+      // Devpost-sourced gallery photos (tagged #src=devpost) lead, then the rest;
+      // the tag is dropped and duplicates collapse on the bare URL.
+      const tagged = candidates(recap).filter((url) => ok.has(url));
+      const rank = (url: string) => (url.includes("#src=devpost") ? 0 : url.includes("#src=") ? 2 : 1);
+      const ordered = [...tagged].sort((a, b) => rank(a) - rank(b));
+      if (info?.image) ordered.splice(ordered.filter((u) => rank(u) === 0).length, 0, info.image);
+      const photos = [...new Set(ordered.map((url) => url.split("#")[0]))];
       group.photos.push(...photos.filter((url) => !group.photos.includes(url)));
       group.projects.push({
         id: recap.id,

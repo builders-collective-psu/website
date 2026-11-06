@@ -601,11 +601,17 @@
 
       window.addEventListener("fx:beat", (event) => {
         const { n, down } = event.detail;
+        // One playhead across every on-screen course list, so a single line lights per beat.
+        const lines = [...onScreen]
+          .filter((el) => el.isConnected && el.matches(PLAYHEADS))
+          .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+          .flatMap((el) => [...el.children]);
+        if (lines.length) retrigger(lines[n % lines.length], "fx-play");
         onScreen.forEach((el) => {
           if (!el.isConnected) return onScreen.delete(el);
           const kids = el.children;
           if (el.matches(WAVES) && kids.length) retrigger(kids[n % kids.length], "fx-hop");
-          else if (el.matches(PLAYHEADS) && kids.length) retrigger(kids[n % kids.length], "fx-play");
+          else if (el.matches(PLAYHEADS)) return;
           else if (el.matches(PUNCH) && down) retrigger(el, "fx-punch");
         });
       });
