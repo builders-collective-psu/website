@@ -274,8 +274,12 @@ const meta = REAL_DATA
         larpKey = key;
         larpTrack = el("div", "larp-track");
         project.larps.forEach((larp) => larpTrack.appendChild(larpCard(larp)));
-        larpSlot.replaceChildren(larpTrack);
-        spring(larpTrack);
+        // The entrance spring goes on a wrapper: an animation on the track
+        // itself would hold its transform and stop the stack from scrolling.
+        const feed = el("div", "larp-feed");
+        feed.appendChild(larpTrack);
+        larpSlot.replaceChildren(feed);
+        spring(feed);
       }
       const cards = [...larpTrack.children];
       // Before the first post comes up, the stack waits at the top, faded.
@@ -322,6 +326,8 @@ const meta = REAL_DATA
       bar.replaceChildren(
         ...event.projects.map((p, pIndex) => {
           const group = el("div", "seg-group");
+          // Width follows the number of segments, so every segment is equal.
+          group.style.flexGrow = String(1 + p.larps.length);
           [-1, ...p.larps.map((_, lIndex) => lIndex)].forEach((lIndex) => {
             const seg = el("button", "seg");
             seg.type = "button";
@@ -666,8 +672,8 @@ const meta = REAL_DATA
 
   /* Progress bar, pinned to the bottom of the right panel. */
   .progress { margin-top: auto; display: grid; gap: 8px; }
-  .bar { display: flex; gap: 10px; }
-  .bar :global(.seg-group) { flex: 1; display: flex; gap: 3px; }
+  .bar { display: flex; gap: 6px; }
+  .bar :global(.seg-group) { flex: 1 1 0; min-width: 0; display: flex; gap: 2px; }
   .bar :global(.seg) {
     position: relative;
     flex: 1;
@@ -678,7 +684,7 @@ const meta = REAL_DATA
     cursor: pointer;
     overflow: hidden;
   }
-  .bar :global(.seg--project) { flex: 0.6; }
+  .bar :global(.seg--project) { flex: 1; }
   .bar :global(.seg-fill) {
     position: absolute;
     inset: 0;
