@@ -52,11 +52,11 @@
     }
     40% { transform: translate(calc(-50% + (var(--sx) + var(--dx) * 2) / 3), calc(-50% + (var(--sy) + var(--dy) * 2) / 3)) scale(1) rotate(var(--rot)); }
     75% { opacity: 1; }
-    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) - 24px)) scale(0.9) rotate(calc(var(--rot) * -1)); opacity: 0; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) - 10px)) scale(0.9) rotate(calc(var(--rot) * -1)); opacity: 0; }
   }
   @keyframes note-wobble {
-    from { transform: translateX(-4px); }
-    to { transform: translateX(4px); }
+    from { transform: translateX(-2px); }
+    to { transform: translateX(2px); }
   }
 
   .globe :global(.g-sphere) { fill: var(--paper-2); stroke: var(--ink); stroke-width: 1.5; }

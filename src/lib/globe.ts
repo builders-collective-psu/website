@@ -170,7 +170,7 @@ export function initGlobe(root: HTMLElement) {
     const hasBeacon = beacon.style.display !== "none" && beacon.hasAttribute("cx");
     const sx = hasBeacon ? Number(beacon.getAttribute("cx")) * scale - root.clientWidth / 2 : 0;
     const sy = hasBeacon ? Number(beacon.getAttribute("cy")) * scale - root.clientHeight / 2 : 0;
-    const lift = 70 + Math.max(0, Math.min(1, (midi - 48) / 32)) * 90; // pitch → height
+    const lift = 28 + Math.max(0, Math.min(1, (midi - 48) / 32)) * 40; // pitch → height
     const angle = (-90 + (rnd() - 0.5) * 110) * (Math.PI / 180);
     const note = document.createElement("span");
     note.className = "note";
@@ -179,7 +179,8 @@ export function initGlobe(root: HTMLElement) {
     note.style.setProperty("--dx", `${sx + Math.cos(angle) * lift}px`);
     note.style.setProperty("--dy", `${sy + Math.sin(angle) * lift}px`);
     note.style.setProperty("--rot", `${Math.round(rnd() * 40 - 20)}deg`);
-    note.style.setProperty("--size", `${kind === "bass" ? 30 : 22}px`);
+    // Sized to the beacon (an ~8px dot), not to the page.
+    note.style.setProperty("--size", `${kind === "bass" ? 12 : 10}px`);
     if (kind === "bass") note.style.setProperty("--tint", "var(--ink)");
     const glyph = document.createElement("span");
     glyph.textContent = GLYPHS[noteCount++ % GLYPHS.length];
