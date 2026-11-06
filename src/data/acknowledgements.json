@@ -16,17 +16,60 @@
   "featuredPartner": {
     "name": "Penn State Engineering Entrepreneurship",
     "logo": "/logos/partners/psu-engineering-entrepreneurship.png",
-    "url": "https://eship.engr.psu.edu/"
+    "url": "https://eship.engr.psu.edu/",
+    "logoDark": "/logos/partners/psu-engineering-entrepreneurship-dark.png"
   },
   "partners": [
-    { "name": "Vercel", "logo": "/logos/alumni/vercel.svg", "mark": true, "url": "https://vercel.com/" },
-    { "name": "AWS", "logo": "/logos/partners/aws.svg", "url": "https://aws.amazon.com/" },
-    { "name": "MongoDB", "logo": "/logos/partners/mongodb.svg", "mark": true, "url": "https://www.mongodb.com/" },
-    { "name": "c0mpiled", "logo": "/logos/partners/compiled.svg", "mark": true, "url": "https://www.compiled.sh/" },
-    { "name": "Luminal", "logo": "/logos/partners/luminal.svg", "mark": true, "url": "https://luminal.com/" },
-    { "name": "AGI, Inc.", "logo": "/logos/alumni/agi.png", "mark": true, "url": "https://www.theagi.company/" },
-    { "name": "Bloomerang", "logo": "/logos/alumni/bloomerang.svg", "url": "https://bloomerang.com/" },
-    { "name": "Red Bull", "logo": "/logos/partners/redbull.svg", "mark": true, "url": "https://www.redbull.com/" },
-    { "name": "MICS by ColorStack — Penn State", "logo": null, "url": "https://www.colorstack.org/" }
+    {
+      "name": "Vercel",
+      "logo": "/logos/alumni/vercel.svg",
+      "mark": true,
+      "url": "https://vercel.com/"
+    },
+    {
+      "name": "AWS",
+      "logo": "/logos/partners/aws.svg",
+      "url": "https://aws.amazon.com/"
+    },
+    {
+      "name": "MongoDB",
+      "logo": "/logos/partners/mongodb.svg",
+      "mark": true,
+      "url": "https://www.mongodb.com/"
+    },
+    {
+      "name": "c0mpiled",
+      "logo": "/logos/partners/compiled.svg",
+      "mark": true,
+      "url": "https://www.compiled.sh/"
+    },
+    {
+      "name": "Luminal",
+      "logo": "/logos/partners/luminal.svg",
+      "mark": true,
+      "url": "https://luminal.com/"
+    },
+    {
+      "name": "AGI, Inc.",
+      "logo": "/logos/alumni/agi.png",
+      "mark": true,
+      "url": "https://www.theagi.company/"
+    },
+    {
+      "name": "Bloomerang",
+      "logo": "/logos/alumni/bloomerang.svg",
+      "url": "https://bloomerang.com/"
+    },
+    {
+      "name": "Red Bull",
+      "logo": "/logos/partners/redbull.svg",
+      "mark": true,
+      "url": "https://www.redbull.com/"
+    },
+    {
+      "name": "MICS by ColorStack — Penn State",
+      "logo": null,
+      "url": "https://www.colorstack.org/"
+    }
   ]
 }

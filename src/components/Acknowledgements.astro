@@ -21,9 +21,10 @@ import ack from "@data/acknowledgements.json";
       </div>
 
       <div class="partners">
-        <p class="label font-mono upper">Past partners</p>
+        <p class="label font-mono upper">Our partners</p>
         <a class="featured" href={ack.featuredPartner.url} target="_blank" rel="noopener noreferrer" title={ack.featuredPartner.name}>
-          <img src={ack.featuredPartner.logo} alt={ack.featuredPartner.name} loading="lazy" />
+          <img class="ee-light" src={ack.featuredPartner.logo} alt={ack.featuredPartner.name} loading="lazy" />
+          <img class="ee-dark" src={ack.featuredPartner.logoDark} alt={ack.featuredPartner.name} loading="lazy" />
         </a>
         <ul class="cloud">
           {ack.partners.map((c) => (
@@ -72,8 +73,12 @@ import ack from "@data/acknowledgements.json";
   /* Partners: Engineering Entrepreneurship first, then the cloud */
   .partners { padding: 28px 0 28px 32px; display: grid; gap: 24px; align-content: start; }
   .label { margin: 0; font-size: 12px; letter-spacing: 0.14em; color: var(--muted); }
-  .featured { display: block; padding-bottom: 24px; border-bottom: 1px solid var(--hairline); }
-  .featured img { display: block; height: 64px; width: auto; max-width: 100%; filter: brightness(0); }
+  .featured { display: block; }
+  /* Full colour: the lion shield and ENTI mark keep their detail; only the text differs per theme. */
+  .featured img { display: block; height: 64px; width: auto; max-width: 100%; }
+  .featured .ee-dark { display: none; }
+  :global([data-theme="dark"]) .featured .ee-light { display: none; }
+  :global([data-theme="dark"]) .featured .ee-dark { display: block; }
   .cloud {
     list-style: none;
     margin: 0;
@@ -93,11 +98,11 @@ import ack from "@data/acknowledgements.json";
   .co:hover img { opacity: 1; }
   .co:hover .co-name { color: var(--accent); }
 
-  :global([data-theme="dark"]) .featured img,
   :global([data-theme="dark"]) .co img { filter: brightness(0) invert(1); }
   @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme="light"])) .featured img,
     :global(:root:not([data-theme="light"])) .co img { filter: brightness(0) invert(1); }
+    :global(:root:not([data-theme="light"])) .featured .ee-light { display: none; }
+    :global(:root:not([data-theme="light"])) .featured .ee-dark { display: block; }
   }
 
   @media (max-width: 900px) {
