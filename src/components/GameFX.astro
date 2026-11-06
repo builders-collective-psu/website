@@ -1,0 +1,187 @@
+---
+/**
+ * Site-wide game feel: soft synthesized UI sounds and springy interactions.
+ *
+ * Sounds are generated with Web Audio (no files) and kept quiet. Browsers only
+ * allow audio after a user gesture, so nothing plays until the first click or
+ * key press. The speaker button in the masthead mutes them; the choice is
+ * remembered per browser. Other components play sounds through window.__sfx.
+ */
+---
+
+<script is:inline>
+  (function () {
+    const KEY = "bc-sfx";
+    let muted = false;
+    try {
+      muted = localStorage.getItem(KEY) === "off";
+    } catch (e) {}
+
+    let ctx = null;
+    let master = null;
+    const ready = () => {
+      if (ctx) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.5;
+      master.connect(ctx.destination);
+      return ctx;
+    };
+    let unlocked = false;
+    const unlock = () => {
+      unlocked = true;
+      const c = ready();
+      if (c && c.state === "suspended") c.resume();
+    };
+    window.addEventListener("pointerdown", unlock, { once: false, passive: true });
+    window.addEventListener("keydown", unlock, { passive: true });
+
+    // One short enveloped tone. Volumes stay well under 0.1.
+    function blip(freq, { type = "sine", dur = 0.06, vol = 0.04, slide = 0 } = {}) {
+      if (muted || !unlocked || !ready() || document.hidden) return;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      if (slide) osc.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(gain).connect(master);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    }
+
+    let lastHover = 0;
+    window.__sfx = {
+      hover() {
+        const now = performance.now();
+        if (now - lastHover < 60) return;
+        lastHover = now;
+        blip(1320, { dur: 0.035, vol: 0.018 });
+      },
+      click() {
+        blip(520, { type: "triangle", dur: 0.09, vol: 0.05, slide: 1.6 });
+      },
+      beat(down) {
+        blip(down ? 330 : 660, { type: "triangle", dur: down ? 0.08 : 0.04, vol: down ? 0.03 : 0.015 });
+      },
+      select() {
+        blip(990, { dur: 0.05, vol: 0.02, slide: 1.25 });
+      },
+    };
+
+    // Toggle
+    const toggle = document.querySelector("[data-sfx-toggle]");
+    const paint = () => {
+      if (!toggle) return;
+      toggle.setAttribute("aria-pressed", String(!muted));
+      toggle.setAttribute("title", muted ? "Sound off" : "Sound on");
+    };
+    paint();
+    toggle?.addEventListener("click", () => {
+      muted = !muted;
+      try {
+        localStorage.setItem(KEY, muted ? "off" : "on");
+      } catch (e) {}
+      paint();
+      if (!muted) window.__sfx.click();
+    });
+
+    // Interactive things get a hover tick and a click blip.
+    const SEL = "a, button, summary, [data-sfx]";
+    document.addEventListener(
+      "pointerover",
+      (event) => {
+        const target = event.target instanceof Element ? event.target.closest(SEL) : null;
+        if (!target || target.contains(event.relatedTarget)) return;
+        window.__sfx.hover();
+      },
+      { passive: true },
+    );
+    document.addEventListener(
+      "click",
+      (event) => {
+        const target = event.target instanceof Element ? event.target.closest(SEL) : null;
+        if (target && target !== toggle) window.__sfx.click();
+      },
+      { passive: true },
+    );
+
+    // Sections and cards spring in the first time they reach the screen.
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("fx-in");
+            io.unobserve(entry.target);
+          });
+        },
+        { threshold: 0.15 },
+      );
+      const watch = () =>
+        document
+          .querySelectorAll("main .sec-title, main article, main .track, main .figure")
+          .forEach((el) => {
+            if (el.dataset.fx) return;
+            el.dataset.fx = "";
+            const box = el.getBoundingClientRect();
+            if (box.top < window.innerHeight) return; // already on screen: leave as is
+            el.classList.add("fx-wait");
+            io.observe(el);
+          });
+      watch();
+      // Cards rendered later from the API.
+      new MutationObserver(watch).observe(document.querySelector("main") || document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
+  })();
+</script>
+
+<style is:global>
+  /* Springy buttons: lift on hover, squash on press. */
+  .btn,
+  .sign-in,
+  .trophy-toggle,
+  [data-event-open] {
+    transition:
+      transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      background var(--dur-fast) ease,
+      color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease;
+  }
+  .btn:hover,
+  .sign-in:hover { transform: translateY(-3px); }
+  .btn:active,
+  .sign-in:active,
+  .trophy-toggle:active,
+  [data-event-open]:active { transform: translateY(1px) scale(0.96); transition-duration: 60ms; }
+
+  /* Cards: a little game-menu lift. */
+  main article {
+    transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1), background var(--dur-normal) ease;
+  }
+  main article:hover { transform: translateY(-4px); }
+
+  /* First-sight entrance: drop in with an overshoot. */
+  .fx-wait { opacity: 0; transform: translateY(24px) scale(0.97); }
+  .fx-wait.fx-in {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 280ms ease-out,
+      transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  main article.fx-wait.fx-in:hover { transform: translateY(-4px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .sign-in, .trophy-toggle, [data-event-open], main article { transition: none; }
+    .btn:hover, .sign-in:hover, main article:hover { transform: none; }
+  }
+</style>

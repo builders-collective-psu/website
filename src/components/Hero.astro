@@ -20,6 +20,7 @@ const { stats, endpoint = "/api/recaps" } = Astro.props;
 const pad = (n: number) => n.toString().padStart(2, "0");
 
 const figures = [
+  { key: "wins", label: "Wins", value: stats.wins },
   { key: "hackathons", label: "Hackathons", value: stats.hackathons },
   { key: "shipped", label: "Shipped", value: stats.shipped },
   { key: "members", label: "Members", value: stats.members },
@@ -49,7 +50,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       </p>
       <figcaption class="caption">
         <span class="total" id="tally-total">
-          <strong data-tally-count>{stats.wins}</strong> wins, one stroke each.
+          One stroke per person, per win.
         </span>
       </figcaption>
     </figure>
@@ -168,6 +169,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
       const wrap = document.createElement("span");
       wrap.className = "group";
+      wrap.setAttribute("data-sfx", "");
       wrap.appendChild(svg);
       wrap._event = event;
       wrap.addEventListener("pointerenter", () => {
@@ -236,6 +238,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       figure.classList.remove("is-kick");
       void figure.offsetWidth;
       figure.classList.add("is-kick");
+      window.__sfx && window.__sfx.beat(beat % 4 === 0);
       if (beat % 4 === 0 && main) {
         main.classList.remove("is-jolt");
         void main.offsetWidth;
@@ -268,8 +271,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       marks.replaceChildren(...groups);
       marks.style.setProperty("--total", String(strokeIndex));
       // The figure is the strokes actually drawn, so the caption stays true.
-      const count = figure.querySelector("[data-tally-count]");
-      if (count) count.textContent = String(strokeIndex);
       figure.setAttribute("data-drawn", "");
       // Start on the newest group once the strokes have landed.
       setTimeout(() => {
@@ -460,6 +461,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   .figure:nth-child(2) dd { animation-delay: -0.8s; }
   .figure:nth-child(3) dd { animation-delay: -1.6s; }
   .figure:nth-child(4) dd { animation-delay: -2.4s; }
+  .figure:nth-child(5) dd { animation-delay: -3s; }
   @keyframes bob {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
@@ -489,8 +491,8 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   /* ---------- Base: pitch + figures ---------- */
   .base {
     display: grid;
-    grid-template-columns: minmax(260px, 1fr) 1.4fr;
-    gap: 48px;
+    grid-template-columns: minmax(240px, 0.8fr) 2fr;
+    gap: 40px;
     align-items: end;
     margin-top: 40px;
   }
@@ -505,14 +507,14 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
   .figures {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     margin: 0;
   }
   .figure { padding-left: 20px; border-left: 1px solid var(--hairline); }
   .figure dt { font-size: 11px; letter-spacing: 0.16em; color: var(--muted); }
   .figure dd {
     margin: 8px 0 0;
-    font-size: clamp(44px, 5vw, 80px);
+    font-size: clamp(40px, 4.2vw, 72px);
     font-weight: 700;
     line-height: 0.9;
     letter-spacing: -0.05em;
