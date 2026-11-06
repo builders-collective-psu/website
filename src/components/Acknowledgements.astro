@@ -22,18 +22,19 @@ import ack from "@data/acknowledgements.json";
 
       <div class="partners">
         <p class="label font-mono upper">Our partners</p>
-        <a class="featured" href={ack.featuredPartner.url} target="_blank" rel="noopener noreferrer" title={ack.featuredPartner.name}>
-          <img class="ee-light" src={ack.featuredPartner.logo} alt={ack.featuredPartner.name} loading="lazy" />
-          <img class="ee-dark" src={ack.featuredPartner.logoDark} alt={ack.featuredPartner.name} loading="lazy" />
-        </a>
         <ul class="cloud">
-          {ack.partners.map((c) => (
-            <li>
-              <a href={c.url} target="_blank" rel="noopener noreferrer" title={c.name} class:list={["co", c.mark && "co--mark", !c.logo && "co--word"]}>
-                {c.logo && <img src={c.logo} alt={c.mark ? "" : c.name} loading="lazy" />}
-                {(c.mark || !c.logo) && <span class="co-name">{c.name}</span>}
-              </a>
-            </li>
+          {ack.partners.map((c) => {
+            const Tag = c.url ? "a" : "span";
+            const link = c.url ? { href: c.url, target: "_blank", rel: "noopener noreferrer" } : {};
+            return (
+              <li class:list={[c.wide && "wide"]}>
+                <Tag {...link} title={c.name} class:list={["co", c.mark && "co--mark", !c.logo && "co--word", c.wide && "co--wide"]}>
+                  {c.logo && <img src={c.logo} alt={c.mark ? "" : c.name} loading="lazy" />}
+                  {(c.mark || !c.logo) && <span class="co-name">{c.name}</span>}
+                </Tag>
+              </li>
+            );
+          })}
           ))}
         </ul>
       </div>
@@ -73,36 +74,30 @@ import ack from "@data/acknowledgements.json";
   /* Partners: Engineering Entrepreneurship first, then the cloud */
   .partners { padding: 28px 0 28px 32px; display: grid; gap: 24px; align-content: start; }
   .label { margin: 0; font-size: 12px; letter-spacing: 0.14em; color: var(--muted); }
-  .featured { display: block; }
-  /* Full colour: the lion shield and ENTI mark keep their detail; only the text differs per theme. */
-  .featured img { display: block; height: 64px; width: auto; max-width: 100%; }
-  .featured .ee-dark { display: none; }
-  :global([data-theme="dark"]) .featured .ee-light { display: none; }
-  :global([data-theme="dark"]) .featured .ee-dark { display: block; }
   .cloud {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 28px 20px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 30px 18px;
     align-items: center;
   }
   .cloud li { display: flex; justify-content: center; min-width: 0; }
+  .cloud li.wide { grid-column: span 2; justify-content: flex-start; }
+  .co--wide img { height: 40px; }
   .co { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; color: var(--ink); }
   .co img { display: block; height: 32px; width: auto; max-width: 100%; object-fit: contain; filter: brightness(0); opacity: 0.85; }
   .co--mark img { height: 26px; }
   .co img[src$="aws.svg"] { height: 40px; }
-  .co-name { font-weight: 700; font-size: 19px; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
-  .co--word .co-name { font-size: 17px; white-space: normal; text-align: center; }
-  .co:hover img { opacity: 1; }
-  .co:hover .co-name { color: var(--accent); }
+  .co-name { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
+  .co--word .co-name { font-size: 16px; white-space: normal; text-align: center; }
+  a.co:hover img { opacity: 1; }
+  a.co:hover .co-name { color: var(--accent); }
 
   :global([data-theme="dark"]) .co img { filter: brightness(0) invert(1); }
   @media (prefers-color-scheme: dark) {
     :global(:root:not([data-theme="light"])) .co img { filter: brightness(0) invert(1); }
-    :global(:root:not([data-theme="light"])) .featured .ee-light { display: none; }
-    :global(:root:not([data-theme="light"])) .featured .ee-dark { display: block; }
   }
 
   @media (max-width: 900px) {
@@ -111,7 +106,8 @@ import ack from "@data/acknowledgements.json";
     .partners { padding-left: 0; }
   }
   @media (max-width: 520px) {
-    .featured img { height: 44px; }
+    .cloud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .co--wide img { height: 30px; }
     .cloud { gap: 22px 12px; }
     .co img { height: 24px; }
     .co--mark img { height: 20px; }

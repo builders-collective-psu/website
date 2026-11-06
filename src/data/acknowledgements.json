@@ -13,18 +13,18 @@
       "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=btg125"
     }
   ],
-  "featuredPartner": {
-    "name": "Penn State Engineering Entrepreneurship",
-    "logo": "/logos/partners/psu-engineering-entrepreneurship.png",
-    "url": "https://eship.engr.psu.edu/",
-    "logoDark": "/logos/partners/psu-engineering-entrepreneurship-dark.png"
-  },
   "partners": [
+    {
+      "name": "Penn State Engineering Entrepreneurship",
+      "logo": "/logos/partners/psu-engineering-entrepreneurship.png",
+      "url": "https://eship.engr.psu.edu/",
+      "wide": true
+    },
     {
       "name": "Vercel",
       "logo": "/logos/alumni/vercel.svg",
-      "mark": true,
-      "url": "https://vercel.com/"
+      "url": "https://vercel.com/",
+      "mark": true
     },
     {
       "name": "AWS",
@@ -34,26 +34,29 @@
     {
       "name": "MongoDB",
       "logo": "/logos/partners/mongodb.svg",
-      "mark": true,
-      "url": "https://www.mongodb.com/"
+      "url": "https://www.mongodb.com/",
+      "mark": true
+    },
+    {
+      "name": "Transpose Platform"
     },
     {
       "name": "c0mpiled",
       "logo": "/logos/partners/compiled.svg",
-      "mark": true,
-      "url": "https://www.compiled.sh/"
+      "url": "https://www.compiled.sh/",
+      "mark": true
     },
     {
       "name": "Luminal",
       "logo": "/logos/partners/luminal.svg",
-      "mark": true,
-      "url": "https://luminal.com/"
+      "url": "https://luminal.com/",
+      "mark": true
     },
     {
       "name": "AGI, Inc.",
       "logo": "/logos/alumni/agi.png",
-      "mark": true,
-      "url": "https://www.theagi.company/"
+      "url": "https://www.theagi.company/",
+      "mark": true
     },
     {
       "name": "Bloomerang",
@@ -63,13 +66,44 @@
     {
       "name": "Red Bull",
       "logo": "/logos/partners/redbull.svg",
-      "mark": true,
-      "url": "https://www.redbull.com/"
+      "url": "https://www.redbull.com/",
+      "mark": true
     },
     {
-      "name": "MICS by ColorStack — Penn State",
-      "logo": null,
-      "url": "https://www.colorstack.org/"
+      "name": "HackPSU",
+      "logo": "/logos/partners/hackpsu.png",
+      "url": "https://hackpsu.org/",
+      "mark": true
+    },
+    {
+      "name": "CCSO",
+      "logo": "/logos/partners/ccso.png",
+      "url": "https://ccso.psu.edu/",
+      "mark": true
+    },
+    {
+      "name": "Connect Happy Valley",
+      "logo": "/logos/partners/connect-happy-valley.png",
+      "url": "https://connecthappyvalley.com/"
+    },
+    {
+      "name": "Nittany AI",
+      "url": "https://nittanyai.psu.edu/"
+    },
+    {
+      "name": "MICS"
+    },
+    {
+      "name": "co.space"
+    },
+    {
+      "name": "Google Developers Club"
+    },
+    {
+      "name": "Hax Club"
+    },
+    {
+      "name": "Open Build"
     }
   ]
 }
