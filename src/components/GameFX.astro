@@ -140,6 +140,26 @@
     let nextBeat = performance.now() + BEAT;
     window.__beatPeriod = BEAT;
 
+    // Browsers throttle timers in background tabs and during long tasks, so
+    // the clock can wake up far behind. It never replays what it missed: late
+    // beats and notes are dropped rather than fired in a burst, and anything
+    // still pending when the tab is hidden is cancelled.
+    const LATE = 150; // ms past its time after which a beat or note is stale
+    let epoch = 0;
+    function onTime(delay, fire) {
+      const due = performance.now() + delay;
+      const mine = epoch;
+      setTimeout(() => {
+        if (mine !== epoch || document.hidden || performance.now() - due > LATE) return;
+        fire();
+      }, delay);
+    }
+    document.addEventListener("visibilitychange", () => {
+      epoch++;
+      // Pick the grid back up from now: the next beat lands one period out.
+      if (!document.hidden) nextBeat = performance.now() + BEAT;
+    });
+
     // ---------- Jazz loop ----------
     // ii–V–I–VI in C, one chord a bar: walking bass, a brushed ride with a
     // swung skip, and soft comping stabs. All synthesized, all quiet.
@@ -209,7 +229,7 @@
     // page can draw one note per note.
     function announce(at, midi, kind) {
       const delay = Math.max(0, (at - ctx.currentTime) * 1000);
-      setTimeout(() => window.dispatchEvent(new CustomEvent("fx:note", { detail: { midi, kind } })), delay);
+      onTime(delay, () => window.dispatchEvent(new CustomEvent("fx:note", { detail: { midi, kind } })));
     }
 
     function playBeat(n, at) {
@@ -265,15 +285,27 @@
       },
     };
 
+    let lastBeatAt = 0;
     setInterval(() => {
       const now = performance.now();
+      // Woke up more than a beat late: skip the missed beats (keeping the
+      // count, so bars stay in phase) instead of playing them all at once.
+      if (now - nextBeat > LATE) {
+        const missed = Math.ceil((now - nextBeat) / BEAT);
+        beatIndex += missed;
+        nextBeat += missed * BEAT;
+      }
       while (nextBeat < now + 120) {
         const n = beatIndex++;
         const at = nextBeat;
         if (musicPlaying()) playBeat(n, ctx.currentTime + Math.max(0, (at - now) / 1000));
-        setTimeout(() => {
-          if (!document.hidden) window.dispatchEvent(new CustomEvent("fx:beat", { detail: { n, down: n % 4 === 0 } }));
-        }, Math.max(0, at - now));
+        onTime(Math.max(0, at - now), () => {
+          // Never two beats closer than half a period, whatever the timers did.
+          const t = performance.now();
+          if (t - lastBeatAt < BEAT / 2) return;
+          lastBeatAt = t;
+          window.dispatchEvent(new CustomEvent("fx:beat", { detail: { n, down: n % 4 === 0 } }));
+        });
         nextBeat += BEAT;
       }
     }, 25);
