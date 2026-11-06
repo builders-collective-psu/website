@@ -46,7 +46,10 @@ const meta = REAL_DATA
           <div class="right" aria-live="polite">
             <div class="post-slot" data-post />
             <div class="larp-slot" data-larp />
-            <div class="progress font-mono upper" data-progress />
+            <div class="progress" data-progress>
+              <div class="bar" data-bar role="group" aria-label="Projects and posts at this event" />
+              <div class="bar-label font-mono upper" data-bar-label />
+            </div>
           </div>
         </div>
       ) : (
@@ -89,7 +92,8 @@ const meta = REAL_DATA
     const list = show.querySelector("[data-events]");
     const postSlot = show.querySelector("[data-post]");
     const larpSlot = show.querySelector("[data-larp]");
-    const progress = show.querySelector("[data-progress]");
+    const bar = show.querySelector("[data-bar]");
+    const barLabel = show.querySelector("[data-bar-label]");
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const el = (tag, className, text) => {
@@ -274,9 +278,37 @@ const meta = REAL_DATA
     function renderProgress({ scroll = true } = {}) {
       const event = events[ei];
       const project = event.projects[pi];
-      const bits = [`Project ${pi + 1}/${event.projects.length}`];
-      if (project.larps.length) bits.push(li >= 0 ? `Post ${li + 1}/${project.larps.length}` : `${project.larps.length} posts`);
-      progress.textContent = bits.join("  ·  ");
+      // Progress bar: one group per winning project at this event, one segment
+      // for the project card and one per post under it. Done segments are
+      // solid, the current one fills on the beat, and any segment jumps there.
+      bar.replaceChildren(
+        ...event.projects.map((p, pIndex) => {
+          const group = el("div", "seg-group");
+          [-1, ...p.larps.map((_, lIndex) => lIndex)].forEach((lIndex) => {
+            const seg = el("button", "seg");
+            seg.type = "button";
+            const isCurrent = pIndex === pi && lIndex === li;
+            const isDone = pIndex < pi || (pIndex === pi && lIndex < li);
+            if (isCurrent) seg.classList.add("is-current");
+            else if (isDone) seg.classList.add("is-done");
+            if (lIndex < 0) seg.classList.add("seg--project");
+            seg.setAttribute(
+              "aria-label",
+              lIndex < 0
+                ? `Project ${pIndex + 1}: ${p.title || p.team || "winning project"}`
+                : `Post ${lIndex + 1} by ${p.larps[lIndex].author}`,
+            );
+            if (isCurrent) seg.setAttribute("aria-current", "step");
+            seg.appendChild(el("span", "seg-fill"));
+            seg.addEventListener("click", () => jumpTo(pIndex, lIndex));
+            group.appendChild(seg);
+          });
+          return group;
+        }),
+      );
+      const bits = [`Project ${pi + 1} of ${event.projects.length}`];
+      if (project.larps.length) bits.push(li >= 0 ? `Post ${li + 1} of ${project.larps.length}` : `${project.larps.length} ${project.larps.length === 1 ? "post" : "posts"} next`);
+      barLabel.textContent = bits.join("  ·  ");
       [...list.children].forEach((item, i) => item.classList.toggle("is-on", i === ei));
       const active = list.children[ei];
       if (active && scroll) {
@@ -284,6 +316,24 @@ const meta = REAL_DATA
         const top = active.offsetTop - list.clientHeight / 2 + active.clientHeight / 2;
         list.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
       }
+    }
+
+    // Fill the current segment by how many beats of its hold have passed.
+    function paintFill() {
+      const fill = bar.querySelector(".is-current .seg-fill");
+      if (fill) fill.style.transform = `scaleX(${Math.min(1, 1 - beatsLeft / hold())})`;
+    }
+
+    function jumpTo(pIndex, lIndex) {
+      const projectChanged = pIndex !== pi;
+      pi = pIndex;
+      li = lIndex;
+      if (projectChanged || lIndex < 0) renderProject();
+      renderLarp();
+      renderProgress({ scroll: false });
+      beatsLeft = hold();
+      paintFill();
+      window.__sfx && window.__sfx.select();
     }
 
     function hold() {
@@ -300,6 +350,7 @@ const meta = REAL_DATA
       renderLarp();
       renderProgress({ scroll });
       beatsLeft = hold();
+      paintFill();
     }
 
     function step() {
@@ -322,6 +373,7 @@ const meta = REAL_DATA
       }
       window.__sfx && window.__sfx.select();
       beatsLeft = hold();
+      paintFill();
     }
 
     // Hovering the show pauses it, so people can read.
@@ -332,6 +384,7 @@ const meta = REAL_DATA
     window.addEventListener("fx:beat", (e) => {
       if (!events.length || !inView || paused || reduced) return;
       if (--beatsLeft <= 0) step();
+      else paintFill();
     });
 
     new IntersectionObserver((entries) => {
@@ -377,7 +430,7 @@ const meta = REAL_DATA
     border-bottom: 1.5px solid var(--ink);
   }
   .left { border-right: 1.5px solid var(--ink); min-height: 0; padding-right: 24px; }
-  .right { padding: 28px 0 28px 32px; display: grid; gap: 18px; align-content: start; min-height: 640px; }
+  .right { padding: 28px 0 24px 32px; display: flex; flex-direction: column; gap: 18px; min-height: 640px; }
 
   .events {
     position: relative;
@@ -515,7 +568,33 @@ const meta = REAL_DATA
   .larp-slot :global(.larp-text) { margin: 0; font-size: 14px; line-height: 1.45; grid-column: auto; }
   .larp-slot :global(.larp-body:not(:has(.larp-img)) .larp-text) { grid-column: 1 / -1; }
 
-  .progress { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
+  /* Progress bar, pinned to the bottom of the right panel. */
+  .progress { margin-top: auto; display: grid; gap: 8px; }
+  .bar { display: flex; gap: 10px; }
+  .bar :global(.seg-group) { flex: 1; display: flex; gap: 3px; }
+  .bar :global(.seg) {
+    position: relative;
+    flex: 1;
+    height: 10px;
+    padding: 0;
+    border: 1px solid var(--ink);
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .bar :global(.seg--project) { flex: 1.6; }
+  .bar :global(.seg-fill) {
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--beat, 640ms) linear;
+  }
+  .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); background: var(--ink); transition: none; }
+  .bar :global(.seg.is-current) { border-color: var(--accent); }
+  .bar :global(.seg:hover) { background: var(--paper-2); }
+  .bar-label { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
 
   /* Springs in, game-card style. */
   .show :global(.spring) { animation: spring-in 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
