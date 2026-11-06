@@ -5,6 +5,23 @@ export const config = { runtime: "edge" };
 
 const LARP_TEXT_LIMIT = 320;
 
+/** Bunker's own scraped Devpost data (GET /projects). */
+interface BunkerProject {
+  urlKey: string;
+  name: string;
+  description: string | null;
+}
+
+/** Same key bunker uses for a Devpost URL: host without www, path, lower case. */
+function canonicalUrl(raw: string): string {
+  try {
+    const u = new URL(raw.trim());
+    return `${u.hostname.replace(/^www\./, "")}${u.pathname.replace(/\/+$/, "")}`.toLowerCase();
+  } catch {
+    return raw.trim().toLowerCase().replace(/[?#].*$/, "").replace(/\/+$/, "");
+  }
+}
+
 interface Larp {
   userId: string;
   userName: string;
@@ -27,10 +44,15 @@ const eventKey = (name: string) => decodeEntities(name).toLowerCase().replace(/\
  */
 export default async function handler(): Promise<Response> {
   try {
-    const [feed, larps] = await Promise.all([
+    const [feed, larps, bunkerProjects] = await Promise.all([
       call<Recap[]>("/community/feed"),
       call<Larp[]>("/larp/feed").catch(() => [] as Larp[]),
+      call<BunkerProject[]>("/projects").catch(() => [] as BunkerProject[]),
     ]);
+    // Project titles and summaries come from bunker, which scrapes Devpost
+    // itself. Fetching Devpost from here is only a fallback: Devpost blocks
+    // requests from Vercel's servers, so in production it mostly fails.
+    const known = new Map(bunkerProjects.map((p) => [p.urlKey, p]));
     const winners = dedupeByTeam(feed).filter((recap) => recap.won === true);
 
     const urls = [...new Set(winners.flatMap(candidates))];
@@ -39,7 +61,9 @@ export default async function handler(): Promise<Response> {
         (url): url is string => !!url,
       ),
     );
-    const devpost = await devpostDetails(winners);
+    const devpost = await devpostDetails(
+      winners.filter((recap) => recap.devpostUrl && !known.has(canonicalUrl(recap.devpostUrl))),
+    );
 
     const larpsFor = (recap: Recap) => {
       const team = new Set([recap.userId, ...(recap.teamMembers ?? []).map((m) => m.userId)]);
@@ -74,6 +98,7 @@ export default async function handler(): Promise<Response> {
         group.end = recap.eventEndDate ?? null;
       }
       const info = devpost.get(recap.id);
+      const fromBunker = recap.devpostUrl ? known.get(canonicalUrl(recap.devpostUrl)) : undefined;
       // Devpost-sourced gallery photos (tagged #src=devpost) lead, then the rest;
       // the tag is dropped and duplicates collapse on the bare URL.
       const tagged = candidates(recap).filter((url) => ok.has(url));
@@ -84,8 +109,8 @@ export default async function handler(): Promise<Response> {
       group.photos.push(...photos.filter((url) => !group.photos.includes(url)));
       group.projects.push({
         id: recap.id,
-        title: info?.title ?? recap.teamName ?? null,
-        summary: info?.summary ?? null,
+        title: fromBunker?.name ?? info?.title ?? recap.teamName ?? null,
+        summary: fromBunker?.description ?? info?.summary ?? null,
         placement: recap.placement,
         prize: recap.prizeName ? decodeEntities(recap.prizeName) : null,
         prizeCents: recap.prizeCents,

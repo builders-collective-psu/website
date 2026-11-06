@@ -45,12 +45,12 @@ const meta = REAL_DATA
           <svg class="fx-defs" width="0" height="0" aria-hidden="true" focusable="false">
             <filter id="bc-fire" x="-20%" y="-40%" width="140%" height="180%">
               <feTurbulence type="fractalNoise" baseFrequency="0.02 0.09" numOctaves="2" seed="3" result="noise">
-                <animate attributeName="baseFrequency" dur="1.8s" values="0.02 0.09;0.025 0.14;0.02 0.09" repeatCount="indefinite" />
+                <animate attributeName="baseFrequency" dur="6s" values="0.018 0.07;0.022 0.1;0.018 0.07" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite" />
               </feTurbulence>
               <feOffset in="noise" dy="0" result="rising">
-                <animate attributeName="dy" dur="0.9s" values="0;-12" repeatCount="indefinite" />
+                <animate attributeName="dy" dur="3.2s" values="0;-12" repeatCount="indefinite" />
               </feOffset>
-              <feDisplacementMap in="SourceGraphic" in2="rising" scale="5" xChannelSelector="R" yChannelSelector="G" />
+              <feDisplacementMap in="SourceGraphic" in2="rising" scale="3.5" xChannelSelector="R" yChannelSelector="G" />
             </filter>
           </svg>
           <div class="left">
@@ -667,8 +667,8 @@ const meta = REAL_DATA
     filter: url(#bc-fire) drop-shadow(0 0 6px rgba(255, 120, 0, 0.55)) drop-shadow(0 -2px 12px rgba(255, 60, 0, 0.35));
     animation:
       t-zoom 4s ease-in-out infinite,
-      fire-rise 1.1s linear infinite,
-      fire-flicker 2.3s steps(1) infinite;
+      fire-rise 3.6s linear infinite,
+      fire-flicker 4.8s ease-in-out infinite;
   }
   @keyframes fire-rise {
     from { background-position: 50% 0%; }
@@ -676,10 +676,9 @@ const meta = REAL_DATA
   }
   @keyframes fire-flicker {
     0%, 100% { opacity: 1; }
-    23% { opacity: 0.88; }
-    41% { opacity: 1; }
-    67% { opacity: 0.93; }
-    79% { opacity: 1; }
+    35% { opacity: 0.9; }
+    60% { opacity: 0.97; }
+    80% { opacity: 0.92; }
   }
 
   /* Project card */
