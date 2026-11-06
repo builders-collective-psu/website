@@ -282,6 +282,7 @@ const meta = REAL_DATA
     });
     list.addEventListener("pointerleave", () => clearTimeout(hoverTimer));
 
+    let scrolledTo = -1;
     function renderProgress({ scroll = true } = {}) {
       const event = events[ei];
       const project = event.projects[pi];
@@ -305,7 +306,11 @@ const meta = REAL_DATA
                 ? `Project ${pIndex + 1}: ${p.title || p.team || "winning project"}`
                 : `Post ${lIndex + 1} by ${p.larps[lIndex].author}`,
             );
-            if (isCurrent) seg.setAttribute("aria-current", "step");
+            if (isCurrent) {
+              seg.setAttribute("aria-current", "step");
+              // Fills smoothly over exactly as long as this step is held.
+              seg.style.setProperty("--dur", `${hold() * (window.__beatPeriod || 640)}ms`);
+            }
             seg.appendChild(el("span", "seg-fill"));
             seg.addEventListener("click", () => jumpTo(pIndex, lIndex));
             group.appendChild(seg);
@@ -318,17 +323,18 @@ const meta = REAL_DATA
       barLabel.textContent = bits.join("  ·  ");
       [...list.children].forEach((item, i) => item.classList.toggle("is-on", i === ei));
       const active = list.children[ei];
-      if (active && scroll) {
+      // Only re-centre the list when the event changes, not on every post.
+      if (active && scroll && scrolledTo !== ei) {
+        scrolledTo = ei;
         // Scroll the list, not the page.
         const top = active.offsetTop - list.clientHeight / 2 + active.clientHeight / 2;
         list.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
       }
     }
 
-    // Fill the current segment by how many beats of its hold have passed.
+    // The current segment's fill is a CSS animation; pause it with the show.
     function paintFill() {
-      const fill = bar.querySelector(".is-current .seg-fill");
-      if (fill) fill.style.transform = `scaleX(${Math.min(1, 1 - beatsLeft / hold())})`;
+      show.classList.toggle("is-paused", paused || !inView);
     }
 
     function jumpTo(pIndex, lIndex) {
@@ -385,8 +391,14 @@ const meta = REAL_DATA
 
     // Hovering the show pauses it, so people can read.
     let paused = false;
-    show.addEventListener("pointerenter", () => (paused = true));
-    show.addEventListener("pointerleave", () => (paused = false));
+    show.addEventListener("pointerenter", () => {
+      paused = true;
+      paintFill();
+    });
+    show.addEventListener("pointerleave", () => {
+      paused = false;
+      paintFill();
+    });
 
     window.addEventListener("fx:beat", (e) => {
       if (!events.length || !inView || paused || reduced) return;
@@ -396,6 +408,7 @@ const meta = REAL_DATA
 
     new IntersectionObserver((entries) => {
       inView = entries.some((entry) => entry.isIntersecting);
+      paintFill();
     }, { threshold: 0.3 }).observe(show);
 
     window.__builds =
@@ -611,9 +624,14 @@ const meta = REAL_DATA
     background: var(--accent);
     transform: scaleX(0);
     transform-origin: left center;
-    transition: transform var(--beat, 640ms) linear;
   }
-  .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); background: var(--ink); transition: none; }
+  .bar :global(.seg.is-current .seg-fill) { animation: seg-fill var(--dur, 2560ms) linear forwards; }
+  .show:global(.is-paused) .bar :global(.seg.is-current .seg-fill) { animation-play-state: paused; }
+  .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); background: var(--ink); }
+  @keyframes seg-fill {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
   .bar :global(.seg.is-current) { border-color: var(--accent); }
   .bar :global(.seg:hover) { background: var(--paper-2); }
   .bar-label { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
@@ -653,6 +671,6 @@ const meta = REAL_DATA
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .show :global(.spring), .events :global(.t-mult) { animation: none; }
+    .show :global(.spring), .events :global(.t-mult), .bar :global(.seg.is-current .seg-fill) { animation: none; }
   }
 </style>
