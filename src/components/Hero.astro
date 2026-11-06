@@ -277,14 +277,17 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     let snores = 0;
     window.addEventListener("fx:beat", (event) => {
       if (reduced || !stopDot || !zzz) return;
-      // Sound is waiting on a first click: on the beat before each pulse, a
-      // little cursor fades in and "clicks" the full stop as a hint.
-      if (event.detail.n % 4 === 3 && ghost && window.__soundUnlocked && !window.__soundUnlocked()) {
+      // Sound is waiting on a first click: before every other pulse (starting
+      // with the first), a little cursor fades in and "clicks" the full stop
+      // as a hint. It starts two beats early so the click lands on the pulse.
+      if (event.detail.n % 8 === 2 && ghost && window.__soundUnlocked && !window.__soundUnlocked()) {
         ghost.classList.remove("is-clicking");
         void ghost.offsetWidth;
         ghost.classList.add("is-clicking");
       }
-      if (event.detail.down) {
+      // Pulses start on the second downbeat (n = 4), so even the first one
+      // has a lead-in for the cursor.
+      if (event.detail.down && event.detail.n >= 4) {
         stopDot.classList.remove("is-pulse");
         void stopDot.offsetWidth;
         stopDot.classList.add("is-pulse");
@@ -510,19 +513,24 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     border-radius: 999px;
     opacity: 0;
   }
-  .ghost:global(.is-clicking) { animation: ghost-move 900ms cubic-bezier(0.22, 1, 0.36, 1); }
-  .ghost:global(.is-clicking) .ghost-ring { animation: ghost-ring 900ms ease-out; }
+  /* 2.6s: slow fade in, hold, click on the pulse (2 beats = 1.28s in), hold,
+     slow fade out. */
+  .ghost:global(.is-clicking) { animation: ghost-move 2600ms ease-in-out forwards; }
+  .ghost:global(.is-clicking) .ghost-ring { animation: ghost-ring 2600ms ease-out forwards; }
   @keyframes ghost-move {
     0% { opacity: 0; transform: translate(26px, 22px); }
-    35% { opacity: 1; transform: translate(0, 0); }
-    50% { transform: translate(0, 0) scale(0.82); }
-    62% { transform: translate(0, 0) scale(1); opacity: 1; }
+    32% { opacity: 1; transform: translate(0, 0); }
+    46% { transform: translate(0, 0) scale(1); }
+    49% { transform: translate(0, 0) scale(0.8); }
+    54% { transform: translate(0, 0) scale(1); }
+    70% { opacity: 1; transform: translate(0, 0); }
     100% { opacity: 0; transform: translate(8px, 6px); }
   }
   @keyframes ghost-ring {
-    0%, 45% { opacity: 0; transform: scale(0.4); }
-    55% { opacity: 1; }
-    100% { opacity: 0; transform: scale(2.4); }
+    0%, 47% { opacity: 0; transform: scale(0.4); }
+    51% { opacity: 1; transform: scale(0.8); }
+    72% { opacity: 0; transform: scale(2.6); }
+    100% { opacity: 0; }
   }
 
   @keyframes snooze {
