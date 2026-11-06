@@ -35,7 +35,16 @@
     let ctx = null;
     let meter = null;
     let master = null;
+    // No sound at all on phones and tablets (touch-only or narrow screens):
+    // no audio engine is ever created, so nothing can play.
+    const NO_SOUND =
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches ||
+      window.matchMedia("(max-width: 720px)").matches;
+    window.__soundAvailable = !NO_SOUND;
+    if (NO_SOUND) document.documentElement.classList.add("no-sound");
+
     const ready = () => {
+      if (NO_SOUND) return null;
       if (ctx) return ctx;
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
@@ -57,6 +66,7 @@
     };
     let unlocked = false;
     const unlock = () => {
+      if (NO_SOUND) return;
       unlocked = true;
       const c = ready();
       if (c && c.state === "suspended") c.resume();

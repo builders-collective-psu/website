@@ -184,6 +184,9 @@ const hrefFor = (href: string) => (href.startsWith("#") && !onHome ? `/${href}` 
   .theme { display: contents; }
 
   .sfx { cursor: pointer; padding: 0; }
+  /* No sound on mobile (see GameFX), so no sound controls either. */
+  :global(.no-sound) .sfx,
+  :global(.no-sound) .vol { display: none; }
   .sfx .mute { display: none; }
   .sfx[aria-pressed="false"] .wave { display: none; }
   .sfx[aria-pressed="false"] .mute { display: inline; }

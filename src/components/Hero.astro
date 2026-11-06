@@ -280,7 +280,13 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       // Sound is waiting on a first click: before every other pulse (starting
       // with the first), a little cursor fades in and "clicks" the full stop
       // as a hint. It starts two beats early so the click lands on the pulse.
-      if (event.detail.n % 8 === 2 && ghost && window.__soundUnlocked && !window.__soundUnlocked()) {
+      if (
+        event.detail.n % 8 === 2 &&
+        ghost &&
+        window.__soundAvailable !== false &&
+        window.__soundUnlocked &&
+        !window.__soundUnlocked()
+      ) {
         ghost.classList.remove("is-clicking");
         void ghost.offsetWidth;
         ghost.classList.add("is-clicking");
