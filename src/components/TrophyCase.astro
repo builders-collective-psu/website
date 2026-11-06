@@ -308,8 +308,8 @@ const meta = REAL_DATA
             );
             if (isCurrent) {
               seg.setAttribute("aria-current", "step");
-              // Fills smoothly over exactly as long as this step is held.
-              seg.style.setProperty("--dur", `${hold() * (window.__beatPeriod || 640)}ms`);
+              // One notch per beat this step is held; it fills a notch a beat.
+              seg.style.setProperty("--ticks", String(hold()));
             }
             seg.appendChild(el("span", "seg-fill"));
             seg.addEventListener("click", () => jumpTo(pIndex, lIndex));
@@ -332,9 +332,19 @@ const meta = REAL_DATA
       }
     }
 
-    // The current segment's fill is a CSS animation; pause it with the show.
-    function paintFill() {
-      show.classList.toggle("is-paused", paused || !inView);
+    // The current segment fills on the beat: one notch per beat, with a
+    // springy snap and a small bump, so the bar keeps time with the music.
+    function paintFill({ bump = false } = {}) {
+      const seg = bar.querySelector(".seg.is-current");
+      const fill = seg && seg.querySelector(".seg-fill");
+      if (!fill) return;
+      const total = hold();
+      fill.style.transform = `scaleX(${Math.max(0, Math.min(1, (total - beatsLeft) / total))})`;
+      if (bump) {
+        seg.classList.remove("is-beat");
+        void seg.offsetWidth;
+        seg.classList.add("is-beat");
+      }
     }
 
     function jumpTo(pIndex, lIndex) {
@@ -403,7 +413,7 @@ const meta = REAL_DATA
     window.addEventListener("fx:beat", (e) => {
       if (!events.length || !inView || paused || reduced) return;
       if (--beatsLeft <= 0) step();
-      else paintFill();
+      else paintFill({ bump: true });
     });
 
     new IntersectionObserver((entries) => {
@@ -624,14 +634,27 @@ const meta = REAL_DATA
     background: var(--accent);
     transform: scaleX(0);
     transform-origin: left center;
+    transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .bar :global(.seg.is-current .seg-fill) { animation: seg-fill var(--dur, 2560ms) linear forwards; }
-  .show:global(.is-paused) .bar :global(.seg.is-current .seg-fill) { animation-play-state: paused; }
+  /* Beat notches across the current segment. */
+  .bar :global(.seg.is-current)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(100% / var(--ticks, 4) - 1px),
+      var(--paper) calc(100% / var(--ticks, 4) - 1px) calc(100% / var(--ticks, 4))
+    );
+    pointer-events: none;
+  }
+  .bar :global(.seg.is-beat) { animation: seg-beat 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes seg-beat {
+    0% { transform: none; }
+    35% { transform: scaleY(1.6); }
+    100% { transform: none; }
+  }
   .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); background: var(--ink); }
-  @keyframes seg-fill {
-    from { transform: scaleX(0); }
-    to { transform: scaleX(1); }
-  }
   .bar :global(.seg.is-current) { border-color: var(--accent); }
   .bar :global(.seg:hover) { background: var(--paper-2); }
   .bar-label { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
@@ -671,6 +694,6 @@ const meta = REAL_DATA
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .show :global(.spring), .events :global(.t-mult), .bar :global(.seg.is-current .seg-fill) { animation: none; }
+    .show :global(.spring), .events :global(.t-mult), .bar :global(.seg.is-beat) { animation: none; }
   }
 </style>
