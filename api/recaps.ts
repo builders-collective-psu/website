@@ -98,6 +98,58 @@ const candidates = (recap: Recap): string[] =>
 const ownPhoto = (recap: Recap, ok: Set<string>): string | null =>
   candidates(recap).find((url) => ok.has(url)) ?? null;
 
+interface EventFlag {
+  slug: string;
+  city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+/**
+ * Most platform events have no coordinates (stored as 0, 0) but do have a
+ * city. Cities and well-known hackathon series map to coordinates here.
+ */
+const CITIES: Record<string, [number, number]> = {
+  "state college": [40.7982, -77.8599],
+  "san francisco": [37.7749, -122.4194],
+  berkeley: [37.8719, -122.2585],
+  "los angeles": [34.0689, -118.4452],
+  baltimore: [39.3299, -76.6205],
+  pittsburgh: [40.4433, -79.9436],
+  philadelphia: [39.9522, -75.1932],
+  "ann arbor": [42.2780, -83.7382],
+  "college park": [38.9869, -76.9426],
+  princeton: [40.3431, -74.6551],
+  boston: [42.3601, -71.0589],
+  cambridge: [42.3770, -71.1167],
+  amherst: [42.3868, -72.5301],
+  "new haven": [41.3163, -72.9223],
+  atlanta: [33.7756, -84.3963],
+  queens: [40.6413, -73.7781],
+  "new york": [40.7128, -74.006],
+  waterloo: [43.4723, -80.5449],
+  dearborn: [42.3223, -83.1763],
+};
+const SERIES: [RegExp, string][] = [
+  [/hackpsu|c0mpiled|gdg@psu/i, "state college"],
+  [/hackprinceton/i, "princeton"],
+  [/cal ?hacks/i, "san francisco"],
+  [/yhack/i, "new haven"],
+  [/hack the north/i, "waterloo"],
+  [/y combinator/i, "san francisco"],
+  [/hacklytics|hackgt/i, "atlanta"],
+  [/mhacks/i, "ann arbor"],
+  [/bitcamp/i, "college park"],
+  [/la hacks|lahacks/i, "los angeles"],
+];
+
+function placeFor(city: string | null | undefined, name: string): [number, number] | null {
+  const known = city && CITIES[city.trim().toLowerCase()];
+  if (known) return known;
+  const series = SERIES.find(([pattern]) => pattern.test(name));
+  return series ? CITIES[series[1]] : null;
+}
+
 /** The platform stores some names HTML-escaped (e.g. &#39;). */
 function decodeEntities(text: string): string {
   return text
@@ -116,7 +168,20 @@ function decodeEntities(text: string): string {
  */
 export default async function handler(): Promise<Response> {
   try {
-    const recaps = dedupeByTeam(await call<Recap[]>("/community/feed"));
+    const [feed, flags] = await Promise.all([
+      call<Recap[]>("/community/feed"),
+      call<EventFlag[]>("/community/event-flags").catch(() => [] as EventFlag[]),
+    ]);
+    const recaps = dedupeByTeam(feed);
+    const coordsBySlug = new Map<string, [number, number]>();
+    const cityBySlug = new Map<string, string>();
+    for (const flag of flags) {
+      const { latitude: lat, longitude: lon } = flag;
+      if (typeof lat === "number" && typeof lon === "number" && (lat !== 0 || lon !== 0)) {
+        coordsBySlug.set(flag.slug, [lat, lon]);
+      }
+      if (flag.city && flag.city !== "Unknown") cityBySlug.set(flag.slug, flag.city);
+    }
     const unique = [...new Set(recaps.flatMap(candidates))];
     const okPhotos = new Set(
       (await Promise.all(unique.map(async (url) => ((await isDisplayable(url)) ? url : null)))).filter(
@@ -177,19 +242,31 @@ export default async function handler(): Promise<Response> {
     // members who went, and wins counted per person.
     const outingsByName = new Map<
       string,
-      { event: string; start: string | null; end: string | null; people: Set<string>; wins: number }
+      {
+        event: string;
+        start: string | null;
+        end: string | null;
+        lat: number | null;
+        lon: number | null;
+        people: Set<string>;
+        wins: number;
+      }
     >();
     for (const recap of recaps) {
       const name = decodeEntities(recap.eventName);
       const key = name.toLowerCase().replace(/\s+/g, " ").trim();
       let outing = outingsByName.get(key);
       if (!outing) {
-        outing = { event: name, start: null, end: null, people: new Set(), wins: 0 };
+        outing = { event: name, start: null, end: null, lat: null, lon: null, people: new Set(), wins: 0 };
         outingsByName.set(key, outing);
       }
       if (!outing.start && recap.eventStartDate) {
         outing.start = recap.eventStartDate;
         outing.end = recap.eventEndDate ?? null;
+      }
+      if (outing.lat === null) {
+        const coords = coordsBySlug.get(recap.eventSlug) ?? placeFor(cityBySlug.get(recap.eventSlug), name);
+        if (coords) [outing.lat, outing.lon] = coords;
       }
       outing.people.add(recap.userId);
       for (const member of recap.teamMembers ?? []) outing.people.add(member.userId);

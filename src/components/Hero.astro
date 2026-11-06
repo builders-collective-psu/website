@@ -2,6 +2,7 @@
 import Button from "./ui/Button.astro";
 import { REAL_DATA } from "@lib/flags";
 import trophies from "@data/trophies.json";
+import Globe from "./Globe.astro";
 
 interface StatsData {
   wins: number;
@@ -31,9 +32,11 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 ---
 
 <section class="hero" aria-labelledby="hero-heading" data-hero>
-  <div class="wrap">
+  <div class="wrap top">
+    <Globe />
     <h1 id="hero-heading" class="headline display">
-      We ship <em>while</em><br />you sleep.
+      <span class="slam slam--left">We ship <em>while</em></span>
+      <span class="slam slam--right">you sleep.</span>
     </h1>
 
     <figure class="tally" data-tally aria-labelledby="tally-total">
@@ -95,6 +98,10 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     const main = document.getElementById("main");
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!figure || !marks) return;
+
+    if (!reduced) {
+      [471, 891].forEach((t) => setTimeout(() => window.__sfx && window.__sfx.clash && window.__sfx.clash(), t));
+    }
 
     const SVG = "http://www.w3.org/2000/svg";
     const H = 64; // stroke height
@@ -208,6 +215,8 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       place(wrap);
       reticle && reticle.classList.add("is-live");
       if (nowName) nowName.textContent = event.event;
+      window.__tallySelected = event;
+      window.dispatchEvent(new CustomEvent("tally:select", { detail: event }));
       if (nowMeta) {
         nowMeta.textContent = [
           `${event.count} ${event.count === 1 ? "win" : "wins"}${event.people ? ` / ${event.people} went` : ""}`,
@@ -302,7 +311,18 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
           if (ratio && people) ratio.textContent = (wins / people).toFixed(2);
           const won = outings
             .filter((o) => o.wins > 0)
-            .map((o) => ({ event: o.event, start: o.start, end: o.end, count: o.wins, people: o.people }));
+            .map((o) => ({
+              event: o.event,
+              start: o.start,
+              end: o.end,
+              count: o.wins,
+              people: o.people,
+              lat: o.lat,
+              lon: o.lon,
+            }));
+          // Every outing goes on the globe; won ones are marked.
+          window.__tallyOutings = outings;
+          window.dispatchEvent(new CustomEvent("tally:outings", { detail: outings }));
           if (!won.length) throw new Error("no wins");
           draw(won);
           return;
@@ -332,11 +352,43 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
 <style>
   .hero {
+    overflow-x: clip;
     border-bottom: var(--rule-major) solid var(--ink);
     padding-block: 44px 40px;
   }
 
-  /* ---------- Headline ---------- */
+  .top { position: relative; }
+
+  /* ---------- Headline: each line slams in from opposite sides ---------- */
+  .slam { display: block; width: max-content; max-width: 100%; }
+  .slam--left { animation: slam-left 760ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .slam--right { animation: slam-right 760ms 420ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  @keyframes slam-left {
+    0% { transform: translateX(-110vw); }
+    62% { transform: translateX(0); }
+    70% { transform: translateX(18px) scaleX(0.94); }
+    80% { transform: translateX(-8px) scaleX(1.02); }
+    90% { transform: translateX(3px); }
+    100% { transform: none; }
+  }
+  @keyframes slam-right {
+    0% { transform: translateX(110vw); }
+    62% { transform: translateX(0); }
+    70% { transform: translateX(-18px) scaleX(0.94); }
+    80% { transform: translateX(8px) scaleX(1.02); }
+    90% { transform: translateX(-3px); }
+    100% { transform: none; }
+  }
+  /* The clash: the whole hero takes the hit as each line lands. */
+  .hero { animation: clash 220ms 471ms steps(4) 1, clash 220ms 891ms steps(4) 1; }
+  @keyframes clash {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(-5px, 3px); }
+    50% { transform: translate(4px, -3px); }
+    75% { transform: translate(-2px, 2px); }
+    100% { transform: none; }
+  }
+
   .headline {
     margin: 0;
     font-size: clamp(56px, min(11.5vw, 17svh), 220px);
@@ -537,6 +589,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .slam--left, .slam--right, .hero { animation: none; }
     .tally[data-drawn] .marks :global(.cluster line) { animation: none; }
     .headline em, .figure dd, .corner { animation: none; }
     .reticle { transition: opacity 200ms ease; }

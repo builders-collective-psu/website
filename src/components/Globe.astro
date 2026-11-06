@@ -1,0 +1,58 @@
+---
+/**
+ * Desktop-only globe in the hero's top-right corner. The drawing code lives in
+ * src/lib/globe.ts and is imported only when the viewport is wide enough.
+ */
+---
+
+<div class="globe" data-globe aria-hidden="true">
+  <svg viewBox="0 0 320 320" width="320" height="320"></svg>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>("[data-globe]");
+  if (root && window.matchMedia("(min-width: 1180px)").matches) {
+    import("../lib/globe").then(({ initGlobe }) => initGlobe(root));
+  }
+</script>
+
+<style>
+  .globe {
+    position: absolute;
+    top: -12px;
+    right: var(--gutter-desktop);
+    width: 300px;
+    height: 300px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 400ms ease;
+  }
+  .globe[data-ready] { opacity: 1; }
+  .globe svg { width: 100%; height: 100%; overflow: visible; }
+
+  .globe :global(.g-sphere) { fill: var(--paper-2); stroke: var(--ink); stroke-width: 1.5; }
+  .globe :global(.g-grid) { fill: none; stroke: var(--hairline); stroke-width: 0.75; }
+  .globe :global(.g-land) { fill: color-mix(in srgb, var(--ink) 14%, transparent); stroke: none; }
+  .globe :global(.g-dot) { fill: var(--muted); opacity: 0.55; }
+  .globe :global(.g-dot--won) { fill: var(--accent); opacity: 1; }
+
+  .globe :global(.g-beacon) {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .globe :global(.g-beacon.is-ping) { animation: ping 1280ms ease-out infinite; }
+  @keyframes ping {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(4.5); opacity: 0; }
+  }
+
+  @media (max-width: 1179px) {
+    .globe { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .globe :global(.g-beacon.is-ping) { animation: none; }
+  }
+</style>

@@ -69,6 +69,25 @@
       beat(down) {
         blip(down ? 330 : 660, { type: "triangle", dur: down ? 0.08 : 0.04, vol: down ? 0.03 : 0.015 });
       },
+      // Impact: a short filtered noise hit over a low thud.
+      clash() {
+        if (muted || !unlocked || !ready() || document.hidden) return;
+        const t = ctx.currentTime;
+        const len = Math.floor(ctx.sampleRate * 0.12);
+        const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const band = ctx.createBiquadFilter();
+        band.type = "bandpass";
+        band.frequency.value = 1800;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.05;
+        noise.connect(band).connect(gain).connect(master);
+        noise.start(t);
+        blip(90, { type: "sine", dur: 0.16, vol: 0.06, slide: 0.6 });
+      },
       select() {
         blip(990, { dur: 0.05, vol: 0.02, slide: 1.25 });
       },
