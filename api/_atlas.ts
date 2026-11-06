@@ -103,8 +103,13 @@ export function dedupeByTeam(recaps: Recap[]): Recap[] {
   });
 }
 
-/** Shared cache policy: cheap for visitors, still fresh within a few minutes. */
-export const CACHE_HEADER = "public, s-maxage=300, stale-while-revalidate=600";
+/**
+ * Shared cache policy. Club numbers change slowly, so the CDN keeps a response
+ * for an hour and then serves it while refreshing in the background (up to a
+ * day). Each endpoint reaches bunker, and its database, at most about once an
+ * hour however many people visit.
+ */
+export const CACHE_HEADER = "public, s-maxage=3600, stale-while-revalidate=86400";
 
 export function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {

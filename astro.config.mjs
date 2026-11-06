@@ -12,13 +12,15 @@ export default defineConfig({
     inlineStylesheets: 'auto',
   },
   compressHTML: true,
-  // `astro dev` cannot run the Vercel functions in /api, so in dev forward
-  // them to production (or API_PROXY). Keeps live figures working locally.
+  // `astro dev` cannot run the Vercel functions in /api. Set API_PROXY to a
+  // deployment (e.g. API_PROXY=https://bc.matmanna.dev) to forward /api there
+  // for live data; without it nothing is proxied, so local work does not
+  // quietly load the production database.
   vite: {
     server: {
-      proxy: {
-        '/api': { target: process.env.API_PROXY || 'https://www.psu.builders', changeOrigin: true },
-      },
+      proxy: process.env.API_PROXY
+        ? { '/api': { target: process.env.API_PROXY, changeOrigin: true } }
+        : {},
     },
   },
 });
