@@ -43,7 +43,7 @@ export default async function handler(): Promise<Response> {
     const [recaps, members, leaderboard] = await Promise.all([
       call<Recap[]>("/community/feed"),
       call<Member[]>("/community/members").catch(() => [] as Member[]),
-      call<{ wins: number }[]>("/community/leaderboard").catch(() => null),
+      call<{ wins: number; prizeCents?: number | null }[]>("/community/leaderboard").catch(() => null),
     ]);
 
     const unique = dedupeByTeam(recaps);
@@ -59,7 +59,13 @@ export default async function handler(): Promise<Response> {
     const wins = leaderboardWins || feedWins;
     const hackathons = new Set(unique.map((recap) => recap.eventId)).size;
     const shipped = unique.length;
-    const prizeCents = unique.reduce((total, recap) => total + (recap.prizeCents ?? 0), 0);
+    // Prize money: the leaderboard gives each member their share (a prize paid
+    // per member counts once per member; a team total is split between them),
+    // so its sum is what the club actually won. Summing one prize per team
+    // undercounts per-member prizes, so that is only the fallback.
+    const feedPrizeCents = unique.reduce((total, recap) => total + (recap.prizeCents ?? 0), 0);
+    const leaderboardPrizeCents = leaderboard?.reduce((total, row) => total + (row.prizeCents ?? 0), 0) ?? 0;
+    const prizeCents = leaderboardPrizeCents || feedPrizeCents;
     const activeMembers = currentMembers(members);
     const teamWins = unique.filter((recap) => recap.won === true).length;
 
