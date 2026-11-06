@@ -36,12 +36,21 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     </h1>
 
     <figure class="tally" data-tally aria-labelledby="tally-total">
-      <div class="marks" data-tally-marks aria-hidden="true"></div>
+      <div class="stagebox">
+        <div class="marks" data-tally-marks aria-hidden="true"></div>
+        <div class="reticle" data-reticle aria-hidden="true">
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+        </div>
+      </div>
+      <p class="now" data-tally-now aria-live="off">
+        <span class="now-name" data-now-name></span>
+        <span class="now-meta font-mono upper" data-now-meta></span>
+      </p>
       <figcaption class="caption">
         <span class="total" id="tally-total">
           <strong data-tally-count>{stats.wins}</strong> wins, one stroke each.
         </span>
-        <span class="detail font-mono" data-tally-detail aria-live="polite">Hover a cluster for the event.</span>
       </figcaption>
     </figure>
 
@@ -78,13 +87,17 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   (function () {
     const figure = document.querySelector("[data-tally]");
     const marks = document.querySelector("[data-tally-marks]");
-    const detail = document.querySelector("[data-tally-detail]");
+    const reticle = document.querySelector("[data-reticle]");
+    const nowName = document.querySelector("[data-now-name]");
+    const nowMeta = document.querySelector("[data-now-meta]");
+    const nowBox = document.querySelector("[data-tally-now]");
+    const main = document.getElementById("main");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!figure || !marks) return;
 
     const SVG = "http://www.w3.org/2000/svg";
     const H = 64; // stroke height
     const STEP = 11; // gap between strokes
-    const IDLE = detail ? detail.textContent : "";
 
     // Deterministic wobble so the strokes look hand-drawn but never shift
     // between visits.
@@ -156,37 +169,113 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       const wrap = document.createElement("span");
       wrap.className = "group";
       wrap.appendChild(svg);
-      const text = [
-        event.event,
-        `${event.count} ${event.count === 1 ? "win" : "wins"}${event.people ? `, ${event.people} went` : ""}`,
-        event.start ? fmtDates(event.start, event.end) : "",
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      wrap._event = event;
       wrap.addEventListener("pointerenter", () => {
-        marks.classList.add("is-focused");
-        wrap.classList.add("is-on");
-        if (detail) detail.textContent = text;
+        held = true;
+        select(groups.indexOf(wrap));
       });
       wrap.addEventListener("pointerleave", () => {
-        marks.classList.remove("is-focused");
-        wrap.classList.remove("is-on");
-        if (detail) detail.textContent = IDLE;
+        held = false;
       });
       return wrap;
     }
+
+    // ---------- Selection: a game-menu reticle that hops between groups ----------
+    let groups = [];
+    let current = -1;
+    let held = false;
+
+    function place(wrap) {
+      if (!reticle || !wrap) return;
+      const box = marks.getBoundingClientRect();
+      const r = wrap.getBoundingClientRect();
+      const padX = 10;
+      const padY = 8;
+      reticle.style.width = `${r.width + padX * 2}px`;
+      reticle.style.height = `${r.height + padY * 2}px`;
+      reticle.style.transform = `translate(${r.left - box.left - padX}px, ${r.top - box.top - padY}px)`;
+    }
+
+    function select(index) {
+      if (!groups.length || index < 0) return;
+      current = index % groups.length;
+      const wrap = groups[current];
+      const event = wrap._event;
+      groups.forEach((g) => g.classList.toggle("is-on", g === wrap));
+      marks.classList.add("is-focused");
+      place(wrap);
+      reticle && reticle.classList.add("is-live");
+      if (nowName) nowName.textContent = event.event;
+      if (nowMeta) {
+        nowMeta.textContent = [
+          `${event.count} ${event.count === 1 ? "win" : "wins"}${event.people ? ` / ${event.people} went` : ""}`,
+          event.start ? fmtDates(event.start, event.end) : "",
+        ]
+          .filter(Boolean)
+          .join("  ·  ");
+      }
+      // Re-trigger the pop on the label each hop.
+      if (nowBox) {
+        nowBox.classList.remove("is-pop");
+        void nowBox.offsetWidth;
+        nowBox.classList.add("is-pop");
+      }
+    }
+
+    window.addEventListener("resize", () => groups[current] && place(groups[current]));
+
+    // ---------- The beat: hop each beat, shake the page on the bar ----------
+    const BEAT = 640;
+    let beat = 0;
+    let timer = 0;
+    let inView = false;
+
+    function tick() {
+      beat++;
+      if (!held) select(current + 1);
+      figure.classList.remove("is-kick");
+      void figure.offsetWidth;
+      figure.classList.add("is-kick");
+      if (beat % 4 === 0 && main) {
+        main.classList.remove("is-jolt");
+        void main.offsetWidth;
+        main.classList.add("is-jolt");
+      }
+    }
+
+    function run() {
+      const go = inView && !document.hidden && groups.length && !reduced;
+      if (go && !timer) timer = setInterval(tick, BEAT);
+      if (!go && timer) {
+        clearInterval(timer);
+        timer = 0;
+      }
+    }
+
+    new IntersectionObserver((entries) => {
+      inView = entries.some((e) => e.isIntersecting);
+      run();
+    }, { threshold: 0.35 }).observe(figure);
+    document.addEventListener("visibilitychange", run);
 
     function draw(events) {
       seed = 7;
       strokeIndex = 0;
       // Oldest first: the tally reads like it was kept, left to right.
       const ordered = events.slice().sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
-      marks.replaceChildren(...ordered.map(cluster));
+      groups = [];
+      groups = ordered.map(cluster);
+      marks.replaceChildren(...groups);
       marks.style.setProperty("--total", String(strokeIndex));
       // The figure is the strokes actually drawn, so the caption stays true.
       const count = figure.querySelector("[data-tally-count]");
       if (count) count.textContent = String(strokeIndex);
       figure.setAttribute("data-drawn", "");
+      // Start on the newest group once the strokes have landed.
+      setTimeout(() => {
+        select(groups.length - 1);
+        run();
+      }, reduced ? 0 : Math.min(1800, strokeIndex * 14 + 300));
     }
 
     if (!live) {
@@ -270,6 +359,8 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   }
   .tally[hidden] { display: none; }
 
+  .stagebox { position: relative; }
+
   .marks {
     display: flex;
     flex-wrap: wrap;
@@ -288,12 +379,95 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   }
 
   /* While one event is under the pointer, the rest step back. */
-  .marks:global(.is-focused) :global(.group:not(.is-on) line) { opacity: 0.2; }
+  .marks:global(.is-focused) :global(.group:not(.is-on) line) { opacity: 0.22; }
   .marks :global(.group.is-on line) { stroke: var(--accent); }
+  .marks :global(.group) { transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .tally:global(.is-kick) .marks :global(.group.is-on) { animation: kick 260ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes kick {
+    0% { transform: translateY(0) scale(1); }
+    35% { transform: translateY(-5px) scale(1.08); }
+    100% { transform: none; }
+  }
+
+  /* Game-menu reticle: four corner brackets that spring to the next pick. */
+  .reticle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      height 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 200ms ease;
+  }
+  .reticle:global(.is-live) { opacity: 1; }
+  .corner {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 3px solid var(--accent);
+    animation: breathe 1280ms ease-in-out infinite;
+  }
+  .tl { top: 0; left: 0; border-right: 0; border-bottom: 0; --dx: -3px; --dy: -3px; }
+  .tr { top: 0; right: 0; border-left: 0; border-bottom: 0; --dx: 3px; --dy: -3px; }
+  .bl { bottom: 0; left: 0; border-right: 0; border-top: 0; --dx: -3px; --dy: 3px; }
+  .br { bottom: 0; right: 0; border-left: 0; border-top: 0; --dx: 3px; --dy: 3px; }
+  @keyframes breathe {
+    0%, 100% { transform: none; }
+    50% { transform: translate(var(--dx), var(--dy)); }
+  }
+
+  /* Name of the selected event, centred under the tallies. */
+  .now {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    margin: 22px 0 0;
+    min-height: 64px;
+    text-align: center;
+  }
+  .now-name {
+    font-size: clamp(22px, 2.6vw, 34px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--accent);
+  }
+  .now-meta { font-size: 11px; letter-spacing: 0.14em; color: var(--muted); }
+  .now:global(.is-pop) .now-name { animation: pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes pop {
+    0% { transform: translateY(8px) scale(0.86); opacity: 0; }
+    100% { transform: none; opacity: 1; }
+  }
+
+  /* Page jolt on the downbeat. Applied to <main> so the sticky header and
+     the modal stay put. */
+  :global(#main.is-jolt) { animation: jolt 140ms steps(3) 1; }
+  @keyframes jolt {
+    0% { transform: translate(0, 0); }
+    33% { transform: translate(-2px, 1px); }
+    66% { transform: translate(2px, -1px); }
+    100% { transform: none; }
+  }
+
+  /* Floaty bits: gentle sine bob, each on its own phase. */
+  .headline em { display: inline-block; animation: bob 2.6s ease-in-out infinite; }
+  .figure dd { animation: bob 3.2s ease-in-out infinite; }
+  .figure:nth-child(2) dd { animation-delay: -0.8s; }
+  .figure:nth-child(3) dd { animation-delay: -1.6s; }
+  .figure:nth-child(4) dd { animation-delay: -2.4s; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
 
   /* Kept like a tally: each stroke lands in order, once. */
   .tally[data-drawn] .marks :global(.cluster line) {
-    animation: stroke-in 220ms ease-out both;
+    animation: stroke-in 220ms ease-out backwards;
     animation-delay: calc(var(--i) * 14ms);
   }
   @keyframes stroke-in {
@@ -311,12 +485,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   }
   .total { font-size: 15px; }
   .total strong { font-weight: 700; font-variant-numeric: tabular-nums; }
-  .detail {
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    min-height: 1.4em;
-  }
 
   /* ---------- Base: pitch + figures ---------- */
   .base {
@@ -359,7 +527,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     .headline { font-size: clamp(48px, 15vw, 96px); }
     .marks { gap: 4px 14px; }
     .marks :global(.cluster) { height: 44px; width: auto; }
-    .detail { display: none; }
     .pitch p { font-size: 18px; }
     .figures { grid-template-columns: repeat(2, 1fr); row-gap: 20px; }
     .figure { padding-left: 12px; }
@@ -369,5 +536,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
   @media (prefers-reduced-motion: reduce) {
     .tally[data-drawn] .marks :global(.cluster line) { animation: none; }
+    .headline em, .figure dd, .corner { animation: none; }
+    .reticle { transition: opacity 200ms ease; }
   }
 </style>
