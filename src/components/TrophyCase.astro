@@ -251,6 +251,27 @@ const meta = REAL_DATA
     let autoScrolling = false;
     let autoScrollTimer = 0;
 
+    // Hovering a post (e.g. the one peeking in below) brings it into focus:
+    // the feed scrolls to it on its own, no scrolling needed. As with the
+    // events list, only real pointer movement counts, so a post sliding under
+    // a still pointer does not keep pulling the feed along.
+    let larpX = -1;
+    let larpY = -1;
+    let larpHoverTimer = 0;
+    larpSlot.addEventListener("pointermove", (event) => {
+      if (event.clientX === larpX && event.clientY === larpY) return;
+      larpX = event.clientX;
+      larpY = event.clientY;
+      const card = event.target instanceof Element ? event.target.closest(".larp") : null;
+      if (!card || !larpTrack) return;
+      const index = [...larpTrack.children].indexOf(card);
+      clearTimeout(larpHoverTimer);
+      larpHoverTimer = setTimeout(() => {
+        if (index >= 0 && index !== li) jumpTo(pi, index);
+      }, 160);
+    });
+    larpSlot.addEventListener("pointerleave", () => clearTimeout(larpHoverTimer));
+
     // Scrolling the posts by hand makes the post it settles on the current
     // one (and restarts its hold), so the progress bar follows along.
     let settleTimer = 0;
