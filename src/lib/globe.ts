@@ -57,6 +57,8 @@ export function initGlobe(root: HTMLElement) {
 
   let outings: Outing[] = [];
   let selected: Selected | null = null;
+  // Set once the note layer exists; called at the end of every render.
+  let placeNotes = () => {};
 
   function render() {
     sphere.setAttribute("d", path({ type: "Sphere" }) ?? "");
@@ -89,6 +91,7 @@ export function initGlobe(root: HTMLElement) {
     } else {
       beacon.style.display = "none";
     }
+    placeNotes();
   }
 
   // Turn to a point with a small overshoot, like a game camera settling.
@@ -160,24 +163,38 @@ export function initGlobe(root: HTMLElement) {
     noteSeed = (noteSeed * 16807) % 2147483647;
     return noteSeed / 2147483647;
   };
+  // Each note is pinned to the place it came from (lon/lat). Its anchor is
+  // re-projected on every render, so when the globe turns the note rides
+  // along with California instead of staying put on the screen.
+  const anchors = new Set<{ el: HTMLElement; lon: number; lat: number }>();
+  const placeAnchor = (anchor: { el: HTMLElement; lon: number; lat: number }) => {
+    const centre = projection.invert?.([size / 2, size / 2]) ?? AMERICA;
+    const facing = geoDistance([anchor.lon, anchor.lat], centre) < Math.PI / 2;
+    const [x, y] = projection([anchor.lon, anchor.lat]) ?? [0, 0];
+    const scale = root.clientWidth / size;
+    anchor.el.style.transform = `translate(${(x * scale).toFixed(1)}px, ${(y * scale).toFixed(1)}px)`;
+    // Rotated round to the far side: hide it, as the globe would.
+    anchor.el.style.visibility = facing ? "" : "hidden";
+  };
+  placeNotes = () => anchors.forEach(placeAnchor);
+
   window.addEventListener("fx:note", (event) => {
     if (!notes || reduced) return;
     const { midi, kind } = (event as CustomEvent<{ midi: number; kind: string }>).detail;
-    // From the beacon (SVG units → the box, relative to its centre). With no
-    // beacon — an event without a location — from the middle of the globe, so
-    // every note played still gets its note.
-    const scale = root.clientWidth / size;
-    const hasBeacon = beacon.style.display !== "none" && beacon.hasAttribute("cx");
-    const sx = hasBeacon ? Number(beacon.getAttribute("cx")) * scale - root.clientWidth / 2 : 0;
-    const sy = hasBeacon ? Number(beacon.getAttribute("cy")) * scale - root.clientHeight / 2 : 0;
+    // From the selected event; with no location, from the point facing us,
+    // so every note played still gets its note.
+    const centre = projection.invert?.([size / 2, size / 2]) ?? AMERICA;
+    const origin: [number, number] =
+      selected && selected.lon != null && selected.lat != null ? [selected.lon, selected.lat] : centre;
     const lift = 28 + Math.max(0, Math.min(1, (midi - 48) / 32)) * 40; // pitch → height
     const angle = (-90 + (rnd() - 0.5) * 110) * (Math.PI / 180);
+
+    const anchorEl = document.createElement("span");
+    anchorEl.className = "note-anchor";
     const note = document.createElement("span");
     note.className = "note";
-    note.style.setProperty("--sx", `${sx}px`);
-    note.style.setProperty("--sy", `${sy}px`);
-    note.style.setProperty("--dx", `${sx + Math.cos(angle) * lift}px`);
-    note.style.setProperty("--dy", `${sy + Math.sin(angle) * lift}px`);
+    note.style.setProperty("--dx", `${Math.cos(angle) * lift}px`);
+    note.style.setProperty("--dy", `${Math.sin(angle) * lift}px`);
     note.style.setProperty("--rot", `${Math.round(rnd() * 40 - 20)}deg`);
     // Sized to the beacon (an ~8px dot), not to the page.
     note.style.setProperty("--size", `${kind === "bass" ? 12 : 10}px`);
@@ -185,10 +202,17 @@ export function initGlobe(root: HTMLElement) {
     const glyph = document.createElement("span");
     glyph.textContent = GLYPHS[noteCount++ % GLYPHS.length];
     note.appendChild(glyph);
+    anchorEl.appendChild(note);
+
+    const anchor = { el: anchorEl, lon: origin[0], lat: origin[1] };
+    anchors.add(anchor);
     note.addEventListener("animationend", (e) => {
-      if (e.target === note) note.remove();
+      if (e.target !== note) return;
+      anchors.delete(anchor);
+      anchorEl.remove();
     });
-    notes.appendChild(note);
+    placeAnchor(anchor);
+    notes.appendChild(anchorEl);
   });
 
   // Data may have arrived before this module loaded.
