@@ -45,6 +45,22 @@ interface Larp {
   ogImageUrl: string | null;
 }
 
+interface Project {
+  id: string;
+  title: string | null;
+  summary: string | null;
+  placement: Recap["placement"];
+  prize: string | null;
+  prizeCents: Recap["prizeCents"];
+  track: Recap["track"];
+  team: Recap["teamName"];
+  members: { name: string; image: string | null }[];
+  devpost: string | null;
+  github: Recap["githubUrl"];
+  photos: string[];
+  larps: { author: string; authorImage: string | null; url: string | null; text: string; image: string | null }[];
+}
+
 const eventKey = (name: string) => decodeEntities(name).toLowerCase().replace(/\s+/g, " ").trim();
 
 /**
@@ -97,7 +113,7 @@ export default async function handler(): Promise<Response> {
 
     const events = new Map<
       string,
-      { event: string; start: string | null; end: string | null; projects: unknown[]; photos: string[] }
+      { event: string; start: string | null; end: string | null; projects: Project[]; photos: string[] }
     >();
     for (const recap of winners) {
       const key = eventKey(recap.eventName);
@@ -120,7 +136,7 @@ export default async function handler(): Promise<Response> {
       if (info?.image) ordered.splice(ordered.filter((u) => rank(u) === 0).length, 0, info.image);
       const photos = [...new Set(ordered.map((url) => url.split("#")[0]))];
       group.photos.push(...photos.filter((url) => !group.photos.includes(url)));
-      group.projects.push({
+      const project: Project = {
         id: recap.id,
         title: fromBunker?.name ?? info?.title ?? titleFromDevpost(recap.devpostUrl) ?? recap.teamName ?? null,
         summary: fromBunker?.description ?? info?.summary ?? null,
@@ -136,15 +152,25 @@ export default async function handler(): Promise<Response> {
         github: recap.githubUrl,
         photos,
         larps: larpsFor(recap),
-      });
+      };
+      // Teammates who each filed a recap for the same project become one card.
+      const twin = project.title
+        ? group.projects.find((p) => p.title?.toLowerCase() === project.title?.toLowerCase())
+        : undefined;
+      if (twin) {
+        for (const m of project.members) if (!twin.members.some((x) => x.name === m.name)) twin.members.push(m);
+        for (const l of project.larps) if (!twin.larps.some((x) => x.url === l.url)) twin.larps.push(l);
+        for (const url of project.photos) if (!twin.photos.includes(url)) twin.photos.push(url);
+        twin.summary ??= project.summary;
+        twin.devpost ??= project.devpost;
+        twin.github ??= project.github;
+      } else group.projects.push(project);
     }
 
     // Within an event, the projects with the most LinkedIn posts lead
     // (stable sort, so ties keep the feed's order).
     for (const group of events.values()) {
-      group.projects.sort(
-        (a, b) => ((b as { larps: unknown[] }).larps.length) - ((a as { larps: unknown[] }).larps.length),
-      );
+      group.projects.sort((a, b) => b.larps.length - a.larps.length);
     }
     const list = [...events.values()].sort((a, b) => String(b.start ?? "").localeCompare(String(a.start ?? "")));
     return json({ events: list, updatedAt: new Date().toISOString() });
