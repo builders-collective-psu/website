@@ -238,15 +238,13 @@ const meta = REAL_DATA
       spring(card);
     }
 
-    function renderLarp() {
-      const project = events[ei].projects[pi];
-      const larp = li >= 0 ? project.larps[li] : null;
-      if (!larp) {
-        larpSlot.replaceChildren();
-        larpSlot.classList.toggle("is-empty", true);
-        return;
-      }
-      larpSlot.classList.remove("is-empty");
+    // The project's posts, as a feed: all of them stacked in a fixed window,
+    // the current one at the top and the next peeking in below. Each step
+    // slides the stack up to the next post instead of swapping cards.
+    let larpKey = "";
+    let larpTrack = null;
+
+    function larpCard(larp) {
       const card = el("article", "larp");
       const head = el("div", "larp-head");
       if (larp.authorImage) head.appendChild(img(larp.authorImage, "", "avatar"));
@@ -258,8 +256,40 @@ const meta = REAL_DATA
       if (larp.text) body.appendChild(el("p", "larp-text", larp.text));
       card.appendChild(body);
       if (larp.url) card.appendChild(link("Read post ↗", larp.url));
-      larpSlot.replaceChildren(card);
-      spring(card);
+      return card;
+    }
+
+    function renderLarp() {
+      const project = events[ei].projects[pi];
+      const key = `${ei}:${pi}`;
+      if (!project.larps.length) {
+        larpKey = key;
+        larpTrack = null;
+        larpSlot.replaceChildren();
+        larpSlot.classList.add("is-empty");
+        return;
+      }
+      larpSlot.classList.remove("is-empty");
+      if (key !== larpKey || !larpTrack) {
+        larpKey = key;
+        larpTrack = el("div", "larp-track");
+        project.larps.forEach((larp) => larpTrack.appendChild(larpCard(larp)));
+        larpSlot.replaceChildren(larpTrack);
+        spring(larpTrack);
+      }
+      const cards = [...larpTrack.children];
+      // Before the first post comes up, the stack waits at the top, faded.
+      const at = Math.max(0, li);
+      cards.forEach((card, i) => {
+        card.classList.toggle("is-on", li >= 0 && i === li);
+        card.classList.toggle("is-past", li >= 0 && i < li);
+      });
+      larpTrack.style.transform = `translateY(${-(cards[at] ? cards[at].offsetTop : 0)}px)`;
+      if (li >= 0 && cards[li]) {
+        cards[li].classList.remove("pop");
+        void cards[li].offsetWidth;
+        cards[li].classList.add("pop");
+      }
     }
 
     // Hovering an event shows it on the right and scrolls the list to centre
@@ -595,7 +625,28 @@ const meta = REAL_DATA
   .show :global(.chip:hover) { background: var(--ink); color: var(--paper); }
 
   /* Larp card, under the project */
-  .larp-slot { min-height: 200px; }
+  /* A window onto the feed: the current post plus a peek at the next. */
+  .larp-slot {
+    position: relative;
+    height: 300px;
+    overflow: hidden;
+    mask-image: linear-gradient(#000 78%, transparent);
+  }
+  .larp-slot.is-empty { height: 0; }
+  .larp-slot :global(.larp-track) {
+    display: grid;
+    gap: 14px;
+    transition: transform 520ms cubic-bezier(0.34, 1.3, 0.64, 1);
+  }
+  .larp-slot :global(.larp) { opacity: 0.45; transition: opacity 320ms ease; }
+  .larp-slot :global(.larp.is-on) { opacity: 1; }
+  .larp-slot :global(.larp.is-past) { opacity: 0.2; }
+  .larp-slot :global(.larp.pop) { animation: larp-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes larp-pop {
+    0% { transform: scale(0.97); }
+    40% { transform: scale(1.015); }
+    100% { transform: none; }
+  }
   .larp-slot :global(.larp) {
     flex-direction: column;
     gap: 12px;
@@ -695,6 +746,8 @@ const meta = REAL_DATA
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .larp-slot :global(.larp-track) { transition: none; }
+    .larp-slot :global(.larp.pop) { animation: none; }
     .show :global(.spring), .events :global(.t-mult), .bar :global(.seg.is-beat) { animation: none; }
   }
 </style>
