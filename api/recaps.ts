@@ -98,6 +98,16 @@ const candidates = (recap: Recap): string[] =>
 const ownPhoto = (recap: Recap, ok: Set<string>): string | null =>
   candidates(recap).find((url) => ok.has(url)) ?? null;
 
+/** The platform stores some names HTML-escaped (e.g. &#39;). */
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 /**
  * Recap cards and the photo gallery, from one upstream call.
  *
@@ -163,7 +173,31 @@ export default async function handler(): Promise<Response> {
         createdAt: recap.createdAt,
       }));
 
-    return json({ wins, cards, photos, updatedAt: new Date().toISOString() });
+    // Per outing (one event, merged by name since some are entered twice):
+    // members who went, and wins counted per person.
+    const outingsByName = new Map<
+      string,
+      { event: string; start: string | null; end: string | null; people: Set<string>; wins: number }
+    >();
+    for (const recap of recaps) {
+      const name = decodeEntities(recap.eventName);
+      const key = name.toLowerCase().replace(/\s+/g, " ").trim();
+      let outing = outingsByName.get(key);
+      if (!outing) {
+        outing = { event: name, start: null, end: null, people: new Set(), wins: 0 };
+        outingsByName.set(key, outing);
+      }
+      if (!outing.start && recap.eventStartDate) {
+        outing.start = recap.eventStartDate;
+        outing.end = recap.eventEndDate ?? null;
+      }
+      outing.people.add(recap.userId);
+      for (const member of recap.teamMembers ?? []) outing.people.add(member.userId);
+      if (recap.won === true) outing.wins += Math.max(1, recap.teamMembers?.length ?? 1);
+    }
+    const outings = [...outingsByName.values()].map(({ people, ...rest }) => ({ ...rest, people: people.size }));
+
+    return json({ wins, cards, photos, outings, updatedAt: new Date().toISOString() });
   } catch (error) {
     const status = error instanceof AtlasError ? error.status : 502;
     return json({ error: "recaps unavailable" }, status === 401 || status === 403 ? 500 : status);

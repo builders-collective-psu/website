@@ -65,6 +65,10 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
             </div>
           ))
         }
+        <div class="figure">
+          <dt class="font-mono upper">Wins / person</dt>
+          <dd data-wins-per-person title="Wins per person per outing, across every event we went to">—</dd>
+        </div>
       </dl>
     </div>
   </div>
@@ -152,9 +156,13 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       const wrap = document.createElement("span");
       wrap.className = "group";
       wrap.appendChild(svg);
-      const text = `${event.event} · ${event.count} ${event.count === 1 ? "win" : "wins"}${
-        event.start ? ` · ${fmtDates(event.start, event.end)}` : ""
-      }`;
+      const text = [
+        event.event,
+        `${event.count} ${event.count === 1 ? "win" : "wins"}${event.people ? `, ${event.people} went` : ""}`,
+        event.start ? fmtDates(event.start, event.end) : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
       wrap.addEventListener("pointerenter", () => {
         marks.classList.add("is-focused");
         wrap.classList.add("is-on");
@@ -195,6 +203,22 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
     window.__recaps
       .then((data) => {
+        // Outings: every event we went to, with who went and how many won.
+        if (Array.isArray(data.outings)) {
+          const outings = data.outings;
+          const wins = outings.reduce((total, o) => total + o.wins, 0);
+          const people = outings.reduce((total, o) => total + o.people, 0);
+          const ratio = document.querySelector("[data-wins-per-person]");
+          if (ratio && people) ratio.textContent = (wins / people).toFixed(2);
+          const won = outings
+            .filter((o) => o.wins > 0)
+            .map((o) => ({ event: o.event, start: o.start, end: o.end, count: o.wins, people: o.people }));
+          if (!won.length) throw new Error("no wins");
+          draw(won);
+          return;
+        }
+
+        // Older API without outings: rebuild the clusters from the wins list.
         const groups = new Map();
         (Array.isArray(data.wins) ? data.wins : []).forEach((win) => {
           const name = plain(win.event);
@@ -313,7 +337,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
   .figures {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     margin: 0;
   }
   .figure { padding-left: 20px; border-left: 1px solid var(--hairline); }
@@ -337,9 +361,9 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     .marks :global(.cluster) { height: 44px; width: auto; }
     .detail { display: none; }
     .pitch p { font-size: 18px; }
-    .figures { grid-template-columns: repeat(3, 1fr); }
+    .figures { grid-template-columns: repeat(2, 1fr); row-gap: 20px; }
     .figure { padding-left: 12px; }
-    .figure:first-child { padding-left: 0; border-left: 0; }
+    .figure:nth-child(odd) { padding-left: 0; border-left: 0; }
     .figure dd { font-size: 40px; }
   }
 
