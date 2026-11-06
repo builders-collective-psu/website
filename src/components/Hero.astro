@@ -1,6 +1,7 @@
 ---
 import Button from "./ui/Button.astro";
 import { REAL_DATA } from "@lib/flags";
+import trophies from "@data/trophies.json";
 
 interface StatsData {
   wins: number;
@@ -11,41 +12,38 @@ interface StatsData {
 
 interface Props {
   stats: StatsData;
+  endpoint?: string;
 }
 
-const { stats } = Astro.props;
+const { stats, endpoint = "/api/recaps" } = Astro.props;
 
 const pad = (n: number) => n.toString().padStart(2, "0");
 
 const figures = [
-  { key: "wins", label: "Wins", value: stats.wins },
   { key: "hackathons", label: "Hackathons", value: stats.hackathons },
   { key: "shipped", label: "Shipped", value: stats.shipped },
   { key: "members", label: "Members", value: stats.members },
 ];
 
+// Without live data the tally draws from the checked-in mock trophies.
+const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.date, count: 1 }));
 ---
 
 <section class="hero" aria-labelledby="hero-heading" data-hero>
-  <div class="bg" aria-hidden="true">
-    <div class="grid"></div>
-  </div>
+  <div class="wrap">
+    <h1 id="hero-heading" class="headline display">
+      We ship <em>while</em><br />you sleep.
+    </h1>
 
-  <div class="wrap inner">
-    <div class="topline font-mono upper">
-      <span>Penn State · University Park</span>
-      <span class="clock" aria-label="Local time in State College">
-        State College <time data-clock>--:--</time>
-      </span>
-    </div>
-
-    <div class="stage">
-      <h1 id="hero-heading" class="headline display upper">
-        <span class="line"><span>We ship</span></span>
-        <span class="line"><span><em>while</em> you</span></span>
-        <span class="line"><span>sleep.</span></span>
-      </h1>
-    </div>
+    <figure class="tally" data-tally aria-labelledby="tally-total">
+      <div class="marks" data-tally-marks aria-hidden="true"></div>
+      <figcaption class="caption">
+        <span class="total" id="tally-total">
+          <strong data-tally-count>{stats.wins}</strong> wins, one stroke each.
+        </span>
+        <span class="detail font-mono" data-tally-detail aria-live="polite">Hover a cluster for the event.</span>
+      </figcaption>
+    </figure>
 
     <div class="base">
       <div class="pitch">
@@ -72,82 +70,165 @@ const figures = [
   </div>
 </section>
 
-<script is:inline>
+<script is:inline define:vars={{ endpoint, live: REAL_DATA, mockEvents }}>
   (function () {
-    const hero = document.querySelector("[data-hero]");
-    if (!hero) return;
-    // Local time where the building happens.
-    const clock = hero.querySelector("[data-clock]");
-    const format = new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "America/New_York",
-    });
-    const tickClock = () => clock && (clock.textContent = format.format(new Date()));
-    tickClock();
-    setInterval(tickClock, 15000);
+    const figure = document.querySelector("[data-tally]");
+    const marks = document.querySelector("[data-tally-marks]");
+    const detail = document.querySelector("[data-tally-detail]");
+    if (!figure || !marks) return;
 
+    const SVG = "http://www.w3.org/2000/svg";
+    const H = 64; // stroke height
+    const STEP = 11; // gap between strokes
+    const IDLE = detail ? detail.textContent : "";
+
+    // Deterministic wobble so the strokes look hand-drawn but never shift
+    // between visits.
+    let seed = 7;
+    const rand = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    const wob = (n) => (rand() - 0.5) * 2 * n;
+
+    const decoder = document.createElement("textarea");
+    const plain = (text) => {
+      decoder.innerHTML = text == null ? "" : String(text);
+      return decoder.value;
+    };
+
+    const fmtDates = (start, end) => {
+      if (!start) return "";
+      const parts = (iso) => {
+        const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+        return { y, d, mon: new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }) };
+      };
+      const a = parts(start);
+      const b = parts(end || start);
+      if (a.y !== b.y) return `${a.mon} ${a.d}, ${a.y} – ${b.mon} ${b.d}, ${b.y}`;
+      if (a.mon !== b.mon) return `${a.mon} ${a.d} – ${b.mon} ${b.d}, ${a.y}`;
+      if (a.d !== b.d) return `${a.mon} ${a.d}–${b.d}, ${a.y}`;
+      return `${a.mon} ${a.d}, ${a.y}`;
+    };
+
+    const line = (svg, x1, y1, x2, y2, index) => {
+      const l = document.createElementNS(SVG, "line");
+      l.setAttribute("x1", x1.toFixed(1));
+      l.setAttribute("y1", y1.toFixed(1));
+      l.setAttribute("x2", x2.toFixed(1));
+      l.setAttribute("y2", y2.toFixed(1));
+      l.style.setProperty("--i", String(index));
+      svg.appendChild(l);
+    };
+
+    // One cluster per event: gates of five (four upright, one across), then
+    // the remainder as uprights.
+    let strokeIndex = 0;
+    function cluster(event) {
+      const gates = Math.floor(event.count / 5);
+      const rest = event.count % 5;
+      const width = gates * (4 * STEP + 10) + rest * STEP + 6;
+      const svg = document.createElementNS(SVG, "svg");
+      svg.setAttribute("viewBox", `0 0 ${width} ${H + 8}`);
+      svg.setAttribute("width", String(width));
+      svg.setAttribute("height", String(H + 8));
+      svg.setAttribute("class", "cluster");
+
+      let x = 5;
+      for (let g = 0; g < gates; g++) {
+        const x0 = x;
+        for (let k = 0; k < 4; k++) {
+          line(svg, x + wob(1.2), 6 + wob(3), x + wob(1.6), H + wob(3), strokeIndex++);
+          x += STEP;
+        }
+        line(svg, x0 - 6 + wob(2), H - 10 + wob(4), x - STEP + 6 + wob(2), 14 + wob(4), strokeIndex++);
+        x += 10;
+      }
+      for (let k = 0; k < rest; k++) {
+        line(svg, x + wob(1.2), 6 + wob(3), x + wob(1.6), H + wob(3), strokeIndex++);
+        x += STEP;
+      }
+
+      const wrap = document.createElement("span");
+      wrap.className = "group";
+      wrap.appendChild(svg);
+      const text = `${event.event} · ${event.count} ${event.count === 1 ? "win" : "wins"}${
+        event.start ? ` · ${fmtDates(event.start, event.end)}` : ""
+      }`;
+      wrap.addEventListener("pointerenter", () => {
+        marks.classList.add("is-focused");
+        wrap.classList.add("is-on");
+        if (detail) detail.textContent = text;
+      });
+      wrap.addEventListener("pointerleave", () => {
+        marks.classList.remove("is-focused");
+        wrap.classList.remove("is-on");
+        if (detail) detail.textContent = IDLE;
+      });
+      return wrap;
+    }
+
+    function draw(events) {
+      seed = 7;
+      strokeIndex = 0;
+      // Oldest first: the tally reads like it was kept, left to right.
+      const ordered = events.slice().sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
+      marks.replaceChildren(...ordered.map(cluster));
+      marks.style.setProperty("--total", String(strokeIndex));
+      // The figure is the strokes actually drawn, so the caption stays true.
+      const count = figure.querySelector("[data-tally-count]");
+      if (count) count.textContent = String(strokeIndex);
+      figure.setAttribute("data-drawn", "");
+    }
+
+    if (!live) {
+      draw(mockEvents);
+      return;
+    }
+
+    window.__recaps =
+      window.__recaps ||
+      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
+        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
+        return response.json();
+      });
+
+    window.__recaps
+      .then((data) => {
+        const groups = new Map();
+        (Array.isArray(data.wins) ? data.wins : []).forEach((win) => {
+          const name = plain(win.event);
+          const key = name.toLowerCase().replace(/\s+/g, " ").trim();
+          if (!groups.has(key)) groups.set(key, { event: name, start: null, end: null, count: 0 });
+          const group = groups.get(key);
+          group.count += Math.max(1, (win.people || []).length);
+          if (!group.start && win.eventStart) {
+            group.start = win.eventStart;
+            group.end = win.eventEnd || null;
+          }
+        });
+        if (!groups.size) throw new Error("no wins");
+        draw([...groups.values()]);
+      })
+      .catch(() => {
+        figure.hidden = true;
+      });
   })();
 </script>
 
 <style>
   .hero {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
     border-bottom: var(--rule-major) solid var(--ink);
+    padding-block: 44px 40px;
   }
-
-  /* ---------- Background: faint blueprint grid ---------- */
-  .bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-
-  .grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--hairline) 1px, transparent 1px),
-      linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
-    background-size: 56px 56px;
-    background-position: -1px -1px;
-    mask-image: radial-gradient(ellipse 80% 90% at 70% 35%, #000 10%, transparent 75%);
-  }
-
-  .inner { padding-block: 28px 40px; }
-
-  /* ---------- Top line ---------- */
-  .topline {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    color: var(--muted);
-  }
-  .topline > span { display: inline-flex; align-items: center; gap: 10px; }
-  .clock time { color: var(--ink); font-variant-numeric: tabular-nums; }
-
 
   /* ---------- Headline ---------- */
-  .stage { margin-top: 40px; }
-
   .headline {
-    max-width: 100%;
     margin: 0;
-    font-size: clamp(64px, min(15vw, 22svh), 290px);
-    line-height: 0.86;
+    font-size: clamp(56px, min(11.5vw, 17svh), 220px);
+    line-height: 0.9;
+    text-transform: uppercase;
   }
-  .line { display: block; overflow: hidden; padding-bottom: 0.04em; }
-  .line > span {
-    display: inline-block;
-    animation: rise 900ms var(--ease-out) both;
-  }
-  .line:nth-child(2) > span { animation-delay: 90ms; }
-  .line:nth-child(3) > span { animation-delay: 180ms; }
-  @keyframes rise {
-    from { transform: translateY(105%); }
-    to { transform: none; }
-  }
-
   .headline em {
     font-family: var(--font-serif);
     font-weight: 400;
@@ -155,20 +236,71 @@ const figures = [
     text-transform: lowercase;
     letter-spacing: -0.01em;
     color: var(--accent);
-    padding-right: 0.06em;
   }
 
+  /* ---------- Tally ---------- */
+  .tally {
+    margin: 36px 0 0;
+    padding-top: 20px;
+    border-top: var(--rule-major) solid var(--ink);
+  }
+  .tally[hidden] { display: none; }
 
+  .marks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 6px 22px;
+    min-height: 72px;
+  }
+
+  .marks :global(.group) { display: inline-flex; cursor: default; }
+  .marks :global(.cluster) { display: block; overflow: visible; }
+  .marks :global(.cluster line) {
+    stroke: var(--ink);
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke var(--dur-fast) ease, opacity var(--dur-fast) ease;
+  }
+
+  /* While one event is under the pointer, the rest step back. */
+  .marks:global(.is-focused) :global(.group:not(.is-on) line) { opacity: 0.2; }
+  .marks :global(.group.is-on line) { stroke: var(--accent); }
+
+  /* Kept like a tally: each stroke lands in order, once. */
+  .tally[data-drawn] .marks :global(.cluster line) {
+    animation: stroke-in 220ms ease-out both;
+    animation-delay: calc(var(--i) * 14ms);
+  }
+  @keyframes stroke-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .caption {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-top: 14px;
+  }
+  .total { font-size: 15px; }
+  .total strong { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .detail {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    min-height: 1.4em;
+  }
 
   /* ---------- Base: pitch + figures ---------- */
   .base {
     display: grid;
-    grid-template-columns: minmax(260px, 0.9fr) 2fr;
+    grid-template-columns: minmax(260px, 1fr) 1.4fr;
     gap: 48px;
     align-items: end;
-    margin-top: 44px;
-    padding-top: 24px;
-    border-top: var(--rule-major) solid var(--ink);
+    margin-top: 40px;
   }
   .pitch p {
     margin: 0;
@@ -181,35 +313,37 @@ const figures = [
 
   .figures {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     margin: 0;
   }
   .figure { padding-left: 20px; border-left: 1px solid var(--hairline); }
   .figure dt { font-size: 11px; letter-spacing: 0.16em; color: var(--muted); }
   .figure dd {
     margin: 8px 0 0;
-    font-size: clamp(48px, 5.6vw, 88px);
+    font-size: clamp(44px, 5vw, 80px);
     font-weight: 700;
     line-height: 0.9;
     letter-spacing: -0.05em;
     font-variant-numeric: tabular-nums;
   }
 
-  /* ---------- Responsive ---------- */
   @media (max-width: 1080px) {
     .base { grid-template-columns: 1fr; gap: 32px; }
   }
   @media (max-width: 640px) {
-    .inner { padding-block: 20px 32px; }
-    .topline .clock { display: none; }
-    .stage { margin-top: 28px; }
-    .headline { font-size: clamp(56px, 17vw, 96px); }
+    .hero { padding-block: 28px 32px; }
+    .headline { font-size: clamp(48px, 15vw, 96px); }
+    .marks { gap: 4px 14px; }
+    .marks :global(.cluster) { height: 44px; width: auto; }
+    .detail { display: none; }
     .pitch p { font-size: 18px; }
-    .figures { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
-    .figure:nth-child(odd) { padding-left: 0; border-left: 0; }
+    .figures { grid-template-columns: repeat(3, 1fr); }
+    .figure { padding-left: 12px; }
+    .figure:first-child { padding-left: 0; border-left: 0; }
+    .figure dd { font-size: 40px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .line > span { animation: none; }
+    .tally[data-drawn] .marks :global(.cluster line) { animation: none; }
   }
 </style>
