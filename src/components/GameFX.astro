@@ -266,6 +266,10 @@
       }
     }, 25);
 
+    // "Awake" = sound is actually on: the visitor has clicked or pressed a key
+    // (so the browser allows audio), it is not muted, and volume is above 0.
+    window.__soundAwake = () => unlocked && !muted && volume > 0;
+
     // Read-only snapshot of the audio engine, for debugging in the console.
     window.__audioState = () => ({
       context: ctx ? ctx.state : "not created",

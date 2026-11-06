@@ -257,15 +257,21 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     let inView = false;
     let started = false;
 
-    // The full stop snores in time: a pulse and one Z per bar.
+    // The full stop snores in time. It pulses once per bar; while the page is
+    // "asleep" (sound not started yet, muted, or at zero volume) it also puffs
+    // out a steady stream of Zs, one per beat. Once sound is on, no Zs.
     const stopDot = document.querySelector(".stop-dot");
     const zzz = document.querySelector("[data-zzz]");
     let snores = 0;
     window.addEventListener("fx:beat", (event) => {
-      if (reduced || !event.detail.down || !stopDot || !zzz) return;
-      stopDot.classList.remove("is-pulse");
-      void stopDot.offsetWidth;
-      stopDot.classList.add("is-pulse");
+      if (reduced || !stopDot || !zzz) return;
+      if (event.detail.down) {
+        stopDot.classList.remove("is-pulse");
+        void stopDot.offsetWidth;
+        stopDot.classList.add("is-pulse");
+      }
+      const asleep = !(window.__soundAwake && window.__soundAwake());
+      if (!asleep) return;
       const z = document.createElement("i");
       const size = snores++ % 3;
       z.textContent = size === 2 ? "Z" : "z";
