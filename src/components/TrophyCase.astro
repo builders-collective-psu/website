@@ -654,7 +654,8 @@ const meta = REAL_DATA
     35% { transform: scaleY(1.6); }
     100% { transform: none; }
   }
-  .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); background: var(--ink); }
+  /* Finished segments stay orange, same as the one filling. */
+  .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); }
   .bar :global(.seg.is-current) { border-color: var(--accent); }
   .bar :global(.seg:hover) { background: var(--paper-2); }
   .bar-label { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
