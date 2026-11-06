@@ -203,7 +203,7 @@ const cards = team.map((m) => ({
     border-bottom: 1.5px solid var(--ink);
     background: var(--paper);
   }
-  .alumni-head { margin: 0; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); }
+  .alumni-head { margin: 0; font-size: 16px; line-height: 1.35; letter-spacing: 0.1em; color: var(--ink-2); }
   /* 3 × 3 grid of logos, each centred in its cell. */
   .logos {
     list-style: none;
@@ -340,6 +340,7 @@ const cards = team.map((m) => ({
     .grid { grid-template-columns: 1fr; }
     .alumni { grid-column: span 1; }
     .logos { gap: 22px 14px; }
+    .alumni-head { font-size: 13px; }
     .co img { height: 26px; }
     .co--mark img { height: 22px; }
     .co-name { font-size: 16px; }
