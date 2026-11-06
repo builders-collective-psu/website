@@ -35,7 +35,6 @@ import ack from "@data/acknowledgements.json";
               </li>
             );
           })}
-          ))}
         </ul>
       </div>
     </div>
@@ -85,11 +84,12 @@ import ack from "@data/acknowledgements.json";
   }
   .cloud li { display: flex; justify-content: center; min-width: 0; }
   .cloud li.wide { grid-column: span 2; justify-content: flex-start; }
-  .co--wide img { height: 40px; }
   .co { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; color: var(--ink); }
   .co img { display: block; height: 32px; width: auto; max-width: 100%; object-fit: contain; filter: brightness(0); opacity: 0.85; }
   .co--mark img { height: 26px; }
   .co img[src$="aws.svg"] { height: 40px; }
+  .co img[src$="hackpsu.png"] { height: 34px; }
+  .co.co--wide img { height: 52px; opacity: 1; }
   .co-name { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
   .co--word .co-name { font-size: 16px; white-space: normal; text-align: center; }
   a.co:hover img { opacity: 1; }
@@ -107,10 +107,10 @@ import ack from "@data/acknowledgements.json";
   }
   @media (max-width: 520px) {
     .cloud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .co--wide img { height: 30px; }
     .cloud { gap: 22px 12px; }
     .co img { height: 24px; }
     .co--mark img { height: 20px; }
     .co-name { font-size: 15px; }
+    .co.co--wide img { height: 38px; }
   }
 </style>
