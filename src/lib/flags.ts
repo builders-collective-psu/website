@@ -9,8 +9,8 @@
  *
  *   REAL_DATA=1 npm run build
  *
- * Vercel production builds turn it on by themselves (VERCEL_ENV=production),
- * so the live site needs no extra setting. Set REAL_DATA=0 to force it off.
+ * Vercel production and preview builds turn it on by themselves (VERCEL_ENV),
+ * so deploys need no extra setting. Set REAL_DATA=0 to force it off.
  *
  * Live mode also needs ATLAS_API_KEY wherever the /api functions run;
  * without it those endpoints return 503 and the live sections stay hidden.
@@ -24,6 +24,6 @@ const RAW = import.meta.env.REAL_DATA ?? process.env.REAL_DATA ?? "";
 
 const FALSY = new Set(["0", "false", "off", "no"]);
 const value = String(RAW).toLowerCase();
-const isProd = process.env.VERCEL_ENV === "production";
+const isVercelDeploy = ["production", "preview"].includes(process.env.VERCEL_ENV ?? "");
 
-export const REAL_DATA = TRUTHY.has(value) || (isProd && !FALSY.has(value));
+export const REAL_DATA = TRUTHY.has(value) || (isVercelDeploy && !FALSY.has(value));
