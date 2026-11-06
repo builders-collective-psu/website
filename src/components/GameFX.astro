@@ -17,6 +17,7 @@
 <script is:inline>
   (function () {
     const KEY = "bc-sfx";
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let muted = false;
     try {
       muted = localStorage.getItem(KEY) === "off";
@@ -226,10 +227,11 @@
       // Comping: a soft stab on the "and" of 2, sometimes on 4.
       const stab = pos === 1 ? at + beatSec * (2 / 3) : pos === 3 && bar % 2 === 0 ? at : null;
       if (stab !== null) {
-        chord.voicing.forEach((m, i) => {
-          tone(stab + i * 0.006, hz(m), { type: "triangle", dur: 0.42, vol: 0.06, cutoff: 2200 });
-          announce(stab + i * 0.006, m, "chord");
-        });
+        chord.voicing.forEach((m, i) =>
+          tone(stab + i * 0.006, hz(m), { type: "triangle", dur: 0.42, vol: 0.06, cutoff: 2200 }),
+        );
+        // A chord is heard as one hit, so it gets one note (its top voice).
+        announce(stab, chord.voicing[chord.voicing.length - 1], "chord");
       }
     }
 
@@ -361,48 +363,176 @@
       reticle.style.height = `${r.height + pad * 2}px`;
       reticle.style.transform = `translate(${r.left - pad}px, ${r.top - pad}px)`;
     };
+    // Spring the brackets onto an element (hover or keyboard focus).
+    const aimAt = (el) => {
+      if (!reticle) return;
+      if (!el) {
+        aimed = null;
+        reticle.classList.remove("is-on");
+        return;
+      }
+      if (el === aimed) return;
+      const first = !reticle.classList.contains("is-on");
+      aimed = el;
+      if (first) reticle.classList.add("no-move");
+      aim();
+      if (first) {
+        void reticle.offsetWidth;
+        reticle.classList.remove("no-move");
+      }
+      reticle.classList.add("is-on");
+      // Re-measure once hover lifts and focus scrolling have settled.
+      setTimeout(aim, 240);
+      setTimeout(aim, 520);
+    };
+    // The hero tally and the globe have their own selection.
+    const ownSelection = (el) => !!el.closest("[data-tally-marks], [data-globe]");
+
     if (reticle && window.matchMedia("(pointer: fine)").matches) {
       document.addEventListener(
         "pointerover",
         (event) => {
           const el = event.target instanceof Element ? event.target.closest(TARGETS) : null;
-          // The hero tally and the globe have their own selection.
-          const skip = !el || el.closest("[data-tally-marks], [data-globe]");
-          if (skip) {
-            if (!el) {
-              aimed = null;
-              reticle.classList.remove("is-on");
-            }
+          if (!el) {
+            // Keep the brackets on a keyboard-focused element.
+            const focused = document.activeElement;
+            aimAt(focused && focused !== document.body && focused.matches(":focus-visible") ? focused : null);
             return;
           }
-          if (el === aimed) return;
-          const first = !reticle.classList.contains("is-on");
-          aimed = el;
-          if (first) reticle.classList.add("no-move");
-          aim();
-          if (first) {
-            void reticle.offsetWidth;
-            reticle.classList.remove("no-move");
-          }
-          reticle.classList.add("is-on");
-          // Re-measure once hover lifts have settled.
-          setTimeout(aim, 240);
+          if (ownSelection(el)) return;
+          aimAt(el);
         },
         { passive: true },
       );
-      document.addEventListener("pointerleave", () => {
-        aimed = null;
-        reticle.classList.remove("is-on");
-      });
-      window.addEventListener(
+      document.addEventListener("pointerleave", () => aimAt(null));
+    }
+    if (reticle) {
+      // Capture phase, so scrolling inside a panel (like the events list)
+      // moves the brackets too, not just scrolling the page.
+      document.addEventListener(
         "scroll",
         () => {
           cancelAnimationFrame(raf);
           raf = requestAnimationFrame(aim);
         },
-        { passive: true },
+        { passive: true, capture: true },
       );
+
+      // Keyboard focus gets the same brackets as hover, in place of the
+      // browser's focus ring (only once this script is running).
+      document.documentElement.classList.add("fx-ready");
+      document.addEventListener("focusin", (event) => {
+        const el = event.target;
+        if (!(el instanceof Element) || !el.matches(":focus-visible") || ownSelection(el)) return;
+        aimAt(el);
+        window.__sfx.hover(Math.min(el.getBoundingClientRect().width, el.getBoundingClientRect().height));
+      });
+      document.addEventListener("focusout", (event) => {
+        if (event.target === aimed && !event.relatedTarget) aimAt(null);
+      });
     }
+
+    // ---------- Keyboard: arrows, WASD and hjkl move focus spatially ----------
+    const FOCUSABLE =
+      'a[href], button:not([disabled]), summary, input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+    const KEYS = {
+      ArrowLeft: "left", a: "left", h: "left",
+      ArrowRight: "right", d: "right", l: "right",
+      ArrowUp: "up", w: "up", k: "up",
+      ArrowDown: "down", s: "down", j: "down",
+    };
+    // Hidden by a scrolling panel it sits in (like cards scrolled out of the
+    // events list)? Then it is not a place focus can jump to.
+    const clippedByPanel = (el, r) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const overflow = getComputedStyle(p).overflowY;
+        if (overflow === "auto" || overflow === "scroll" || overflow === "hidden") {
+          const box = p.getBoundingClientRect();
+          if (r.bottom <= box.top || r.top >= box.bottom || r.right <= box.left || r.left >= box.right) return true;
+        }
+      }
+      return false;
+    };
+    const visibleFocusables = () =>
+      [...document.querySelectorAll(FOCUSABLE)].filter((el) => {
+        if (el.closest("[hidden], [inert]")) return false;
+        const r = el.getBoundingClientRect();
+        // Ignore the visually hidden (1px) skip link and other zero-size things.
+        if (r.width < 4 || r.height < 4 || getComputedStyle(el).visibility === "hidden") return false;
+        return !clippedByPanel(el, r);
+      });
+
+    // Nearest element in that direction: distance along the direction, with
+    // sideways drift weighted heavier so it prefers things in line.
+    function nextInDirection(from, dir) {
+      const a = from.getBoundingClientRect();
+      const ax = a.left + a.width / 2;
+      const ay = a.top + a.height / 2;
+      let best = null;
+      let bestScore = Infinity;
+      const fromHeader = !!from.closest(".masthead, [data-event-bar]");
+      for (const el of visibleFocusables()) {
+        if (el === from || el.contains(from) || from.contains(el)) continue;
+        const b = el.getBoundingClientRect();
+        const bx = b.left + b.width / 2;
+        const by = b.top + b.height / 2;
+        let along;
+        let across;
+        // Must actually lie that way: allow only a little overlap.
+        const slackX = Math.min(a.width, b.width) * 0.3;
+        const slackY = Math.min(a.height, b.height) * 0.3;
+        if (dir === "right") { along = b.left - a.right; across = by - ay; if (along < -slackX) continue; }
+        if (dir === "left") { along = a.left - b.right; across = by - ay; if (along < -slackX) continue; }
+        if (dir === "down") { along = b.top - a.bottom; across = bx - ax; if (along < -slackY) continue; }
+        if (dir === "up") { along = a.top - b.bottom; across = bx - ax; if (along < -slackY) continue; }
+        // Prefer things inside a 45° cone ahead, then the nearest.
+        const outsideCone = Math.abs(across) > Math.max(0, along) + 40;
+        // The sticky header is always "above" on screen; only go there from
+        // inside it, or when nothing else lies that way.
+        const intoHeader = !fromHeader && !!el.closest(".masthead, [data-event-bar]");
+        const score =
+          Math.max(0, along) + Math.abs(across) * 1.5 + (outsideCone ? 1500 : 0) + (intoHeader ? 5000 : 0);
+        if (score < bestScore) {
+          bestScore = score;
+          best = el;
+        }
+      }
+      return best;
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      const dir = KEYS[event.key] || KEYS[event.key.toLowerCase && event.key.toLowerCase()];
+      if (!dir) return;
+      const active = document.activeElement;
+      // Leave typing, selects and sliders alone (a slider keeps its arrows;
+      // letters still move focus off it).
+      if (active && (active.isContentEditable || /^(textarea|select)$/i.test(active.tagName))) return;
+      if (active && active.tagName === "INPUT") {
+        const type = (active.getAttribute("type") || "text").toLowerCase();
+        if (type !== "range" && type !== "checkbox" && type !== "radio" && type !== "button") return;
+        if (type === "range" && event.key.startsWith("Arrow")) return;
+      }
+      if (document.querySelector("dialog[open]")) return;
+
+      let target;
+      if (!active || active === document.body) {
+        // Nothing focused yet: start from the first control on screen.
+        target = visibleFocusables().find((el) => {
+          const r = el.getBoundingClientRect();
+          return r.top >= 0 && r.bottom <= window.innerHeight;
+        });
+      } else {
+        target = nextInDirection(active, dir);
+      }
+      if (!target) return;
+      event.preventDefault();
+      target.focus({ preventScroll: true, focusVisible: true });
+      const r = target.getBoundingClientRect();
+      if (r.top < 90 || r.bottom > window.innerHeight - 20) {
+        target.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+      }
+    });
 
     // Section titles: slam in from alternating sides the first time they are
     // seen (like the hero headline), then kick on every downbeat while on screen.
@@ -470,6 +600,9 @@
 </script>
 
 <style is:global>
+  /* With the script running, keyboard focus is shown by the brackets. */
+  .fx-ready :focus-visible { outline: none !important; }
+
   /* Page-wide hover brackets, same look as the hero tally's selector. */
   .fx-reticle {
     position: fixed;

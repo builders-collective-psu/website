@@ -41,7 +41,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
     <figure class="tally" data-tally aria-label="Wins, one stroke per person per win, grouped by event">
       <div class="stagebox">
-        <div class="marks" data-tally-marks aria-hidden="true"></div>
+        <div class="marks" data-tally-marks role="group" aria-label="Events, one cluster of strokes each"></div>
         <div class="reticle" data-reticle aria-hidden="true">
           <span class="corner tl"></span><span class="corner tr"></span>
           <span class="corner bl"></span><span class="corner br"></span>
@@ -185,6 +185,17 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       wrap.setAttribute("data-sfx", "");
       wrap.appendChild(svg);
       wrap._event = event;
+      // Reachable by keyboard too: focusing a cluster selects and holds it.
+      wrap.tabIndex = 0;
+      wrap.setAttribute("role", "button");
+      wrap.setAttribute("aria-label", `${event.event}, ${event.count} ${event.count === 1 ? "win" : "wins"}`);
+      wrap.addEventListener("focus", () => {
+        held = true;
+        select(groups.indexOf(wrap));
+      });
+      wrap.addEventListener("blur", () => {
+        held = false;
+      });
       wrap.addEventListener("pointerenter", () => {
         held = true;
         select(groups.indexOf(wrap));
