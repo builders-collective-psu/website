@@ -43,7 +43,7 @@ export default async function handler(): Promise<Response> {
     const [recaps, members, leaderboard] = await Promise.all([
       call<Recap[]>("/community/feed"),
       call<Member[]>("/community/members").catch(() => [] as Member[]),
-      call<{ wins: number; prizeCents?: number | null }[]>("/community/leaderboard").catch(() => null),
+      call<{ wins: number }[]>("/community/leaderboard").catch(() => null),
     ]);
 
     const unique = dedupeByTeam(recaps);
@@ -59,13 +59,16 @@ export default async function handler(): Promise<Response> {
     const wins = leaderboardWins || feedWins;
     const hackathons = new Set(unique.map((recap) => recap.eventId)).size;
     const shipped = unique.length;
-    // Prize money: the leaderboard gives each member their share (a prize paid
-    // per member counts once per member; a team total is split between them),
-    // so its sum is what the club actually won. Summing one prize per team
-    // undercounts per-member prizes, so that is only the fallback.
-    const feedPrizeCents = unique.reduce((total, recap) => total + (recap.prizeCents ?? 0), 0);
-    const leaderboardPrizeCents = leaderboard?.reduce((total, row) => total + (row.prizeCents ?? 0), 0) ?? 0;
-    const prizeCents = leaderboardPrizeCents || feedPrizeCents;
+    // Prize money, counted the way bunker does: a prize paid per member counts
+    // once for each member of the team, a team-total prize once. All prize
+    // types (cash, credits, physical, other) are included. Summing bunker's
+    // leaderboard instead comes up short: team members without a bunker
+    // account are not on it, so their shares drop out.
+    const prizeCents = unique.reduce((total, recap) => {
+      const cents = recap.prizeCents ?? 0;
+      const people = Math.max(1, recap.teamMembers?.length ?? 1);
+      return total + (recap.prizeSplit === "per_member" ? cents * people : cents);
+    }, 0);
     const activeMembers = currentMembers(members);
     const teamWins = unique.filter((recap) => recap.won === true).length;
 
