@@ -12,7 +12,8 @@
     "check": "astro check",
     "og": "rsvg-convert -w 1200 -h 630 public/og.svg -o public/og.png",
     "dev:api": "npm run build && npx tsx scripts/dev-server.mts",
-    "seed:headshots": "npx tsx scripts/seed-headshots.mts"
+    "seed:headshots": "npx tsx scripts/seed-headshots.mts",
+    "dev:live": "API_PROXY=https://bc.matmanna.dev astro dev"
   },
   "dependencies": {
     "@astrojs/tailwind": "^5.1.5",

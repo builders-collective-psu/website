@@ -6,6 +6,7 @@ import WhyEnti from "@components/WhyEnti.astro";
 import Team from "@components/Team.astro";
 import BlogTeaser from "@components/BlogTeaser.astro";
 import ApplySponsor from "@components/ApplySponsor.astro";
+import Acknowledgements from "@components/Acknowledgements.astro";
 import LiveStats from "@components/LiveStats.astro";
 
 import stats from "@data/stats.json";
@@ -20,6 +21,7 @@ import apply from "@data/apply.json";
   <WhyEnti enti={enti} />
   <BlogTeaser />
   <Team team={team} />
+  <Acknowledgements />
   <ApplySponsor apply={apply} />
   <LiveStats />
 </Base>

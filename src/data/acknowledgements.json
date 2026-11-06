@@ -1,0 +1,32 @@
+{
+  "people": [
+    {
+      "name": "Ted Graef",
+      "title": "Director, Engineering Entrepreneurship",
+      "photo": "/headshots/ack/ted-graef.jpg",
+      "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=jtf150"
+    },
+    {
+      "name": "Brad Groznik",
+      "title": "Assistant Teaching Professor, Engineering Entrepreneurship",
+      "photo": "/headshots/ack/brad-groznik.jpg",
+      "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=btg125"
+    }
+  ],
+  "featuredPartner": {
+    "name": "Penn State Engineering Entrepreneurship",
+    "logo": "/logos/partners/psu-engineering-entrepreneurship.png",
+    "url": "https://eship.engr.psu.edu/"
+  },
+  "partners": [
+    { "name": "Vercel", "logo": "/logos/alumni/vercel.svg", "mark": true, "url": "https://vercel.com/" },
+    { "name": "AWS", "logo": "/logos/partners/aws.svg", "url": "https://aws.amazon.com/" },
+    { "name": "MongoDB", "logo": "/logos/partners/mongodb.svg", "mark": true, "url": "https://www.mongodb.com/" },
+    { "name": "c0mpiled", "logo": "/logos/partners/compiled.svg", "mark": true, "url": "https://www.compiled.sh/" },
+    { "name": "Luminal", "logo": "/logos/partners/luminal.svg", "mark": true, "url": "https://luminal.com/" },
+    { "name": "AGI, Inc.", "logo": "/logos/alumni/agi.png", "mark": true, "url": "https://www.theagi.company/" },
+    { "name": "Bloomerang", "logo": "/logos/alumni/bloomerang.svg", "url": "https://bloomerang.com/" },
+    { "name": "Red Bull", "logo": "/logos/partners/redbull.svg", "mark": true, "url": "https://www.redbull.com/" },
+    { "name": "MICS by ColorStack — Penn State", "logo": null, "url": "https://www.colorstack.org/" }
+  ]
+}
