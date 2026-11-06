@@ -149,6 +149,47 @@ export function initGlobe(root: HTMLElement) {
     }
   });
 
+  // One flying note per musical note, launched from the beacon on the
+  // selected event. Bass notes are ink, chord notes orange; higher pitches
+  // fly higher.
+  const notes = root.querySelector<HTMLElement>("[data-notes]");
+  const GLYPHS = ["♪", "♫", "♩", "♬"];
+  let noteSeed = 3;
+  let noteCount = 0;
+  const rnd = () => {
+    noteSeed = (noteSeed * 16807) % 2147483647;
+    return noteSeed / 2147483647;
+  };
+  window.addEventListener("fx:note", (event) => {
+    if (!notes || reduced) return;
+    const { midi, kind } = (event as CustomEvent<{ midi: number; kind: string }>).detail;
+    // From the beacon (SVG units → the box, relative to its centre). With no
+    // beacon — an event without a location — from the middle of the globe, so
+    // every note played still gets its note.
+    const scale = root.clientWidth / size;
+    const hasBeacon = beacon.style.display !== "none" && beacon.hasAttribute("cx");
+    const sx = hasBeacon ? Number(beacon.getAttribute("cx")) * scale - root.clientWidth / 2 : 0;
+    const sy = hasBeacon ? Number(beacon.getAttribute("cy")) * scale - root.clientHeight / 2 : 0;
+    const lift = 70 + Math.max(0, Math.min(1, (midi - 48) / 32)) * 90; // pitch → height
+    const angle = (-90 + (rnd() - 0.5) * 110) * (Math.PI / 180);
+    const note = document.createElement("span");
+    note.className = "note";
+    note.style.setProperty("--sx", `${sx}px`);
+    note.style.setProperty("--sy", `${sy}px`);
+    note.style.setProperty("--dx", `${sx + Math.cos(angle) * lift}px`);
+    note.style.setProperty("--dy", `${sy + Math.sin(angle) * lift}px`);
+    note.style.setProperty("--rot", `${Math.round(rnd() * 40 - 20)}deg`);
+    note.style.setProperty("--size", `${kind === "bass" ? 30 : 22}px`);
+    if (kind === "bass") note.style.setProperty("--tint", "var(--ink)");
+    const glyph = document.createElement("span");
+    glyph.textContent = GLYPHS[noteCount++ % GLYPHS.length];
+    note.appendChild(glyph);
+    note.addEventListener("animationend", (e) => {
+      if (e.target === note) note.remove();
+    });
+    notes.appendChild(note);
+  });
+
   // Data may have arrived before this module loaded.
   const w = window as unknown as { __tallyOutings?: Outing[]; __tallySelected?: Selected };
   if (w.__tallyOutings) {

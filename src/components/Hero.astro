@@ -36,7 +36,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     <Globe />
     <h1 id="hero-heading" class="headline display">
       <span class="slam slam--left">We ship <em>while</em></span>
-      <span class="slam slam--right">you sleep.</span>
+      <span class="slam slam--right">you sleep<span class="stop"><span class="stop-dot">.</span><span class="zzz" aria-hidden="true" data-zzz></span></span></span>
     </h1>
 
     <figure class="tally" data-tally aria-label="Wins, one stroke per person per win, grouped by event">
@@ -257,6 +257,23 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     let inView = false;
     let started = false;
 
+    // The full stop snores in time: a pulse and one Z per bar.
+    const stopDot = document.querySelector(".stop-dot");
+    const zzz = document.querySelector("[data-zzz]");
+    let snores = 0;
+    window.addEventListener("fx:beat", (event) => {
+      if (reduced || !event.detail.down || !stopDot || !zzz) return;
+      stopDot.classList.remove("is-pulse");
+      void stopDot.offsetWidth;
+      stopDot.classList.add("is-pulse");
+      const z = document.createElement("i");
+      const size = snores++ % 3;
+      z.textContent = size === 2 ? "Z" : "z";
+      z.style.setProperty("--zs", ["0.24em", "0.3em", "0.38em"][size]);
+      z.addEventListener("animationend", () => z.remove());
+      zzz.appendChild(z);
+    });
+
     window.addEventListener("fx:beat", (event) => {
       if (!started || !inView || reduced || !groups.length) return;
       const { down } = event.detail;
@@ -413,6 +430,44 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     line-height: 0.9;
     text-transform: uppercase;
   }
+  /* The full stop snores: once per bar it pulses and puffs out a Z. */
+  .stop { position: relative; display: inline-block; }
+  .stop-dot { display: inline-block; transform-origin: 30% 85%; }
+  .stop-dot:global(.is-pulse) { animation: dot-pulse 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes dot-pulse {
+    0% { transform: none; }
+    30% { transform: scale(1.35); color: var(--accent); }
+    100% { transform: none; }
+  }
+  /* Anchored on the dot itself: low, near the baseline. */
+  .zzz {
+    position: absolute;
+    left: 0.22em;
+    bottom: 0.12em;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    text-transform: none;
+  }
+  .zzz :global(i) {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: var(--zs, 0.3em);
+    line-height: 1;
+    color: var(--accent);
+    animation: snooze 3.4s ease-out forwards;
+  }
+  @keyframes snooze {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.3) rotate(-10deg); }
+    12% { opacity: 1; transform: translate(0.15em, -0.25em) scale(0.75) rotate(4deg); }
+    45% { transform: translate(0.7em, -1em) scale(1) rotate(-8deg); opacity: 1; }
+    100% { opacity: 0; transform: translate(1.5em, -2.1em) scale(1.25) rotate(12deg); }
+  }
+
   .headline em {
     font-family: var(--font-serif);
     font-weight: 400;
@@ -648,6 +703,8 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   @media (prefers-reduced-motion: reduce) {
     .slam--left, .slam--right, .hero { animation: none; }
     .tally[data-drawn] .marks :global(.cluster line) { animation: none; }
+    .zzz { display: none; }
+    .stop-dot { animation: none; }
     .headline em, .figure dd, .corner, .boombox .spk { animation: none; }
     .reticle { transition: opacity 200ms ease; }
   }

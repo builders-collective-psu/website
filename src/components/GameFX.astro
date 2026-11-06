@@ -194,6 +194,13 @@
       src.start(at);
       src.stop(at + dur + 0.02);
     }
+    // Announce each pitched note at the moment it sounds ("fx:note"), so the
+    // page can draw one note per note.
+    function announce(at, midi, kind) {
+      const delay = Math.max(0, (at - ctx.currentTime) * 1000);
+      setTimeout(() => window.dispatchEvent(new CustomEvent("fx:note", { detail: { midi, kind } })), delay);
+    }
+
     function playBeat(n, at) {
       const beatSec = BEAT / 1000;
       const bar = Math.floor(n / 4) % CHORDS.length;
@@ -209,6 +216,7 @@
       ][pos];
       // Up an octave from a real upright so laptop speakers can play it.
       tone(at, hz(bass + 12), { type: "triangle", dur: beatSec * 0.95, vol: 0.24, cutoff: 1600 });
+      announce(at, bass + 12, "bass");
       // Ride on every beat, swung skip note after 2 and 4, foot hat on 2 and 4.
       brush(at, 0.07);
       if (pos === 1 || pos === 3) {
@@ -218,13 +226,20 @@
       // Comping: a soft stab on the "and" of 2, sometimes on 4.
       const stab = pos === 1 ? at + beatSec * (2 / 3) : pos === 3 && bar % 2 === 0 ? at : null;
       if (stab !== null) {
-        chord.voicing.forEach((m, i) => tone(stab + i * 0.006, hz(m), { type: "triangle", dur: 0.42, vol: 0.06, cutoff: 2200 }));
+        chord.voicing.forEach((m, i) => {
+          tone(stab + i * 0.006, hz(m), { type: "triangle", dur: 0.42, vol: 0.06, cutoff: 2200 });
+          announce(stab + i * 0.006, m, "chord");
+        });
       }
     }
 
     const musicPlaying = () => musicOn && !muted && unlocked && !!ctx && !document.hidden;
 
     window.__music = {
+      // True only while the loop is actually sounding (audio unlocked, not muted).
+      get playing() {
+        return musicPlaying() && volume > 0;
+      },
       get on() {
         return musicOn && !muted;
       },
