@@ -1,0 +1,105 @@
+import { AtlasError, call, dedupeByTeam, json, type Recap } from "./_atlas";
+import { candidates, decodeEntities, devpostDetails, isDisplayable } from "./_media";
+
+export const config = { runtime: "edge" };
+
+const LARP_TEXT_LIMIT = 320;
+
+interface Larp {
+  userId: string;
+  userName: string;
+  userImage: string | null;
+  eventName: string;
+  linkedinUrl: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
+}
+
+const eventKey = (name: string) => decodeEntities(name).toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * What we built, for the Built & Won section: every winning project grouped
+ * by event, with its Devpost title and summary, the team, photos, and the
+ * members' LinkedIn posts ("larps") about it.
+ *
+ * Separate from /api/recaps because the Devpost lookups are slow, and the
+ * hero should not wait on them. Ratings and private notes are never sent.
+ */
+export default async function handler(): Promise<Response> {
+  try {
+    const [feed, larps] = await Promise.all([
+      call<Recap[]>("/community/feed"),
+      call<Larp[]>("/larp/feed").catch(() => [] as Larp[]),
+    ]);
+    const winners = dedupeByTeam(feed).filter((recap) => recap.won === true);
+
+    const urls = [...new Set(winners.flatMap(candidates))];
+    const ok = new Set(
+      (await Promise.all(urls.map(async (url) => ((await isDisplayable(url)) ? url : null)))).filter(
+        (url): url is string => !!url,
+      ),
+    );
+    const devpost = await devpostDetails(winners);
+
+    const larpsFor = (recap: Recap) => {
+      const team = new Set([recap.userId, ...(recap.teamMembers ?? []).map((m) => m.userId)]);
+      const key = eventKey(recap.eventName);
+      return larps
+        .filter((larp) => team.has(larp.userId) && eventKey(larp.eventName) === key)
+        .map((larp) => {
+          const text = larp.ogDescription ? decodeEntities(larp.ogDescription).trim() : "";
+          return {
+            author: larp.userName,
+            authorImage: larp.userImage,
+            url: larp.linkedinUrl,
+            text: text.length > LARP_TEXT_LIMIT ? `${text.slice(0, LARP_TEXT_LIMIT).trimEnd()}…` : text,
+            image: larp.ogImageUrl ? decodeEntities(larp.ogImageUrl) : null,
+          };
+        });
+    };
+
+    const events = new Map<
+      string,
+      { event: string; start: string | null; end: string | null; projects: unknown[]; photos: string[] }
+    >();
+    for (const recap of winners) {
+      const key = eventKey(recap.eventName);
+      let group = events.get(key);
+      if (!group) {
+        group = { event: decodeEntities(recap.eventName), start: null, end: null, projects: [], photos: [] };
+        events.set(key, group);
+      }
+      if (!group.start && recap.eventStartDate) {
+        group.start = recap.eventStartDate;
+        group.end = recap.eventEndDate ?? null;
+      }
+      const info = devpost.get(recap.id);
+      const photos = candidates(recap).filter((url) => ok.has(url));
+      if (info?.image) photos.push(info.image);
+      group.photos.push(...photos.filter((url) => !group.photos.includes(url)));
+      group.projects.push({
+        id: recap.id,
+        title: info?.title ?? recap.teamName ?? null,
+        summary: info?.summary ?? null,
+        placement: recap.placement,
+        prize: recap.prizeName ? decodeEntities(recap.prizeName) : null,
+        prizeCents: recap.prizeCents,
+        track: recap.track,
+        team: recap.teamName,
+        members: (recap.teamMembers ?? [{ userId: recap.userId, name: recap.userName, image: recap.userImage }]).map(
+          (person) => ({ name: person.name, image: person.image }),
+        ),
+        devpost: recap.devpostUrl,
+        github: recap.githubUrl,
+        photos,
+        larps: larpsFor(recap),
+      });
+    }
+
+    const list = [...events.values()].sort((a, b) => String(b.start ?? "").localeCompare(String(a.start ?? "")));
+    return json({ events: list, updatedAt: new Date().toISOString() });
+  } catch (error) {
+    const status = error instanceof AtlasError ? error.status : 502;
+    return json({ error: "builds unavailable" }, status === 401 || status === 403 ? 500 : status);
+  }
+}

@@ -22,6 +22,15 @@
       muted = localStorage.getItem(KEY) === "off";
     } catch (e) {}
 
+    // Volume: six discrete steps, 0 = silent.
+    const LEVELS = [0, 0.15, 0.3, 0.5, 0.75, 1];
+    let volume = 3;
+    try {
+      const raw = localStorage.getItem("bc-vol");
+      const saved = raw === null ? NaN : Number(raw);
+      if (Number.isInteger(saved) && saved >= 0 && saved < LEVELS.length) volume = saved;
+    } catch (e) {}
+
     let ctx = null;
     let master = null;
     const ready = () => {
@@ -30,7 +39,7 @@
       if (!AC) return null;
       ctx = new AC();
       master = ctx.createGain();
-      master.gain.value = 0.5;
+      master.gain.value = LEVELS[volume];
       master.connect(ctx.destination);
       return ctx;
     };
@@ -62,11 +71,13 @@
 
     let lastHover = 0;
     window.__sfx = {
-      hover() {
+      // Bigger things sound lower.
+      hover(size = 40) {
         const now = performance.now();
         if (now - lastHover < 60) return;
         lastHover = now;
-        blip(1320, { dur: 0.035, vol: 0.018 });
+        const pitch = Math.max(520, Math.min(1500, 1500 - Math.sqrt(size) * 22));
+        blip(pitch, { dur: 0.04, vol: 0.02 });
       },
       click() {
         blip(520, { type: "triangle", dur: 0.09, vol: 0.05, slide: 1.6 });
@@ -98,6 +109,136 @@
       },
     };
 
+    // ---------- Beat clock ----------
+    // One shared beat for the whole page (640 ms, about 94 bpm). Components
+    // listen for "fx:beat" with { n, down }. When audio is running the music
+    // is scheduled on the same grid, slightly ahead, so they stay in step.
+    const BEAT = 640;
+    let beatIndex = 0;
+    let nextBeat = performance.now() + BEAT;
+    window.__beatPeriod = BEAT;
+
+    // ---------- Jazz loop ----------
+    // ii–V–I–VI in C, one chord a bar: walking bass, a brushed ride with a
+    // swung skip, and soft comping stabs. All synthesized, all quiet.
+    const MUSIC_KEY = "bc-music";
+    let musicOn = true;
+    try {
+      musicOn = localStorage.getItem(MUSIC_KEY) !== "off";
+    } catch (e) {}
+    let musicBus = null;
+    const bus = () => {
+      if (!musicBus && ready()) {
+        musicBus = ctx.createGain();
+        musicBus.gain.value = 0.55;
+        musicBus.connect(master);
+      }
+      return musicBus;
+    };
+    const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+    const CHORDS = [
+      { root: 38, tones: [0, 3, 7, 10], voicing: [65, 72, 76] }, // Dm7:  F C E
+      { root: 43, tones: [0, 4, 7, 10], voicing: [65, 71, 76] }, // G7:   F B E
+      { root: 36, tones: [0, 4, 7, 11], voicing: [64, 71, 74] }, // Cmaj7: E B D
+      { root: 45, tones: [0, 4, 7, 10], voicing: [61, 67, 71] }, // A7:   C# G B
+    ];
+    let noiseBuffer = null;
+    const noise = () => {
+      if (!noiseBuffer) {
+        noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+        const d = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      return noiseBuffer;
+    };
+    function tone(at, freq, { type = "sine", dur = 0.3, vol = 0.03, cutoff = 0 } = {}) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, at);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      let out = osc.connect(gain);
+      if (cutoff) {
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = cutoff;
+        out = out.connect(lp);
+      }
+      out.connect(bus());
+      osc.start(at);
+      osc.stop(at + dur + 0.05);
+    }
+    function brush(at, vol, dur = 0.09, freq = 7000) {
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = freq;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(vol, at);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      src.connect(hp).connect(gain).connect(bus());
+      src.start(at);
+      src.stop(at + dur + 0.02);
+    }
+    function playBeat(n, at) {
+      const beatSec = BEAT / 1000;
+      const bar = Math.floor(n / 4) % CHORDS.length;
+      const pos = n % 4;
+      const chord = CHORDS[bar];
+      const next = CHORDS[(bar + 1) % CHORDS.length];
+      // Walking bass: root, chord tone, fifth, then a half-step approach.
+      const bass = [
+        chord.root,
+        chord.root + chord.tones[1 + ((n >> 2) % 2)],
+        chord.root + 7,
+        next.root + (n % 8 < 4 ? -1 : 1),
+      ][pos];
+      tone(at, hz(bass), { type: "triangle", dur: beatSec * 0.95, vol: 0.09, cutoff: 900 });
+      // Ride on every beat, swung skip note after 2 and 4, foot hat on 2 and 4.
+      brush(at, 0.016);
+      if (pos === 1 || pos === 3) {
+        brush(at + beatSec * (2 / 3), 0.01);
+        brush(at, 0.012, 0.05, 4000);
+      }
+      // Comping: a soft stab on the "and" of 2, sometimes on 4.
+      const stab = pos === 1 ? at + beatSec * (2 / 3) : pos === 3 && bar % 2 === 0 ? at : null;
+      if (stab !== null) {
+        chord.voicing.forEach((m, i) => tone(stab + i * 0.006, hz(m), { dur: 0.42, vol: 0.016, cutoff: 1800 }));
+      }
+    }
+
+    const musicPlaying = () => musicOn && !muted && unlocked && !!ctx && !document.hidden;
+
+    window.__music = {
+      get on() {
+        return musicOn && !muted;
+      },
+      toggle() {
+        musicOn = !musicOn;
+        try {
+          localStorage.setItem(MUSIC_KEY, musicOn ? "on" : "off");
+        } catch (e) {}
+        window.dispatchEvent(new CustomEvent("fx:music", { detail: window.__music.on }));
+        return musicOn;
+      },
+    };
+
+    setInterval(() => {
+      const now = performance.now();
+      while (nextBeat < now + 120) {
+        const n = beatIndex++;
+        const at = nextBeat;
+        if (musicPlaying()) playBeat(n, ctx.currentTime + Math.max(0, (at - now) / 1000));
+        setTimeout(() => {
+          if (!document.hidden) window.dispatchEvent(new CustomEvent("fx:beat", { detail: { n, down: n % 4 === 0 } }));
+        }, Math.max(0, at - now));
+        nextBeat += BEAT;
+      }
+    }, 25);
+
     // Toggle
     const toggle = document.querySelector("[data-sfx-toggle]");
     const paint = () => {
@@ -113,16 +254,32 @@
       } catch (e) {}
       paint();
       if (!muted) window.__sfx.click();
+      window.dispatchEvent(new CustomEvent("fx:music", { detail: window.__music.on }));
     });
 
+    const slider = document.querySelector("[data-sfx-volume]");
+    if (slider) {
+      slider.value = String(volume);
+      slider.addEventListener("input", () => {
+        volume = Number(slider.value);
+        try {
+          localStorage.setItem("bc-vol", String(volume));
+        } catch (e) {}
+        if (master) master.gain.setTargetAtTime(LEVELS[volume], ctx.currentTime, 0.02);
+        // Preview each notch at its new level.
+        window.__sfx.select();
+      });
+    }
+
     // Interactive things get a hover tick and a click blip.
-    const SEL = "a, button, summary, [data-sfx]";
+    const SEL = "a, button, summary, main article, [data-sfx]";
     document.addEventListener(
       "pointerover",
       (event) => {
         const target = event.target instanceof Element ? event.target.closest(SEL) : null;
         if (!target || target.contains(event.relatedTarget)) return;
-        window.__sfx.hover();
+        const box = target.getBoundingClientRect();
+        window.__sfx.hover(Math.min(box.width, box.height));
       },
       { passive: true },
     );
@@ -144,7 +301,13 @@
     const aim = () => {
       if (!reticle || !aimed || !aimed.isConnected) return;
       const r = aimed.getBoundingClientRect();
-      const pad = 6;
+      // Corners grow with the target: small links get tight brackets, cards
+      // get big ones.
+      const corner = Math.max(10, Math.min(30, Math.min(r.width, r.height) * 0.22));
+      reticle.style.setProperty("--cs", `${corner}px`);
+      reticle.style.setProperty("--bw", `${corner > 20 ? 4 : 3}px`);
+      reticle.style.setProperty("--d", `${Math.round(corner * 0.25)}px`);
+      const pad = Math.round(corner * 0.45);
       reticle.style.width = `${r.width + pad * 2}px`;
       reticle.style.height = `${r.height + pad * 2}px`;
       reticle.style.transform = `translate(${r.left - pad}px, ${r.top - pad}px)`;
@@ -192,6 +355,38 @@
       );
     }
 
+    // Section titles: slam in from alternating sides the first time they are
+    // seen (like the hero headline), then kick on every downbeat while on screen.
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
+      const titles = [...document.querySelectorAll("main .sec-title")];
+      const visible = new Set();
+      const titleIO = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const el = entry.target;
+            if (entry.isIntersecting) {
+              visible.add(el);
+              if (!el.dataset.slammed) {
+                el.dataset.slammed = "";
+                el.classList.add(titles.indexOf(el) % 2 ? "fx-slam-r" : "fx-slam-l");
+                setTimeout(() => window.__sfx.clash(), 470);
+              }
+            } else visible.delete(el);
+          });
+        },
+        { threshold: 0.4 },
+      );
+      titles.forEach((el) => titleIO.observe(el));
+      window.addEventListener("fx:beat", (event) => {
+        if (!event.detail.down) return;
+        visible.forEach((el) => {
+          el.classList.remove("fx-kick");
+          void el.offsetWidth;
+          el.classList.add("fx-kick");
+        });
+      });
+    }
+
     // Sections and cards spring in the first time they reach the screen.
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
       const io = new IntersectionObserver(
@@ -206,7 +401,7 @@
       );
       const watch = () =>
         document
-          .querySelectorAll("main .sec-title, main article, main .track, main .figure")
+          .querySelectorAll("main article, main .track, main .figure")
           .forEach((el) => {
             if (el.dataset.fx) return;
             el.dataset.fx = "";
@@ -246,15 +441,42 @@
   .fx-reticle.no-move { transition: opacity 160ms ease; }
   .fx-c {
     position: absolute;
-    width: 10px;
-    height: 10px;
-    border: 2px solid var(--accent);
+    width: var(--cs, 14px);
+    height: var(--cs, 14px);
+    border: var(--bw, 3px) solid var(--accent);
+    transition: width 220ms ease, height 220ms ease;
     animation: fx-breathe 1280ms ease-in-out infinite;
   }
-  .fx-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; --dx: -2px; --dy: -2px; }
-  .fx-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; --dx: 2px; --dy: -2px; }
-  .fx-bl { bottom: 0; left: 0; border-right: 0; border-top: 0; --dx: -2px; --dy: 2px; }
-  .fx-br { bottom: 0; right: 0; border-left: 0; border-top: 0; --dx: 2px; --dy: 2px; }
+  .fx-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; --dx: calc(var(--d, 3px) * -1); --dy: calc(var(--d, 3px) * -1); }
+  .fx-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; --dx: var(--d, 3px); --dy: calc(var(--d, 3px) * -1); }
+  .fx-bl { bottom: 0; left: 0; border-right: 0; border-top: 0; --dx: calc(var(--d, 3px) * -1); --dy: var(--d, 3px); }
+  .fx-br { bottom: 0; right: 0; border-left: 0; border-top: 0; --dx: var(--d, 3px); --dy: var(--d, 3px); }
+
+  /* Section titles slam in like the hero headline, and kick on the downbeat. */
+  .sec-title { will-change: transform; }
+  .sec-title.fx-slam-l { animation: fx-slam-l 760ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .sec-title.fx-slam-r { animation: fx-slam-r 760ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .sec-title.fx-kick { animation: fx-kick 240ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes fx-slam-l {
+    0% { transform: translateX(-110vw); }
+    62% { transform: translateX(0); }
+    72% { transform: translateX(14px) scaleX(0.95); }
+    84% { transform: translateX(-5px); }
+    100% { transform: none; }
+  }
+  @keyframes fx-slam-r {
+    0% { transform: translateX(110vw); }
+    62% { transform: translateX(0); }
+    72% { transform: translateX(-14px) scaleX(0.95); }
+    84% { transform: translateX(5px); }
+    100% { transform: none; }
+  }
+  @keyframes fx-kick {
+    0% { transform: none; }
+    35% { transform: translateY(-4px) scale(1.012); }
+    100% { transform: none; }
+  }
+  main .sec { overflow-x: clip; }
   @keyframes fx-breathe {
     0%, 100% { transform: none; }
     50% { transform: translate(var(--dx), var(--dy)); }
@@ -298,6 +520,7 @@
   @media (prefers-reduced-motion: reduce) {
     .fx-reticle { transition: opacity 160ms ease; }
     .fx-c { animation: none; }
+    .sec-title.fx-slam-l, .sec-title.fx-slam-r, .sec-title.fx-kick { animation: none; }
     .btn, .sign-in, .trophy-toggle, [data-event-open], main article { transition: none; }
     .btn:hover, .sign-in:hover, main article:hover { transform: none; }
   }

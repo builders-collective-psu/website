@@ -69,6 +69,10 @@ const { site } = Astro.props;
           <path class="mute" d="M11 5.5l4 5M15 5.5l-4 5" />
         </svg>
       </button>
+      <label class="vol" title="Volume">
+        <span class="sr-only">Sound volume</span>
+        <input type="range" min="0" max="5" step="1" value="3" data-sfx-volume />
+      </label>
       <span class="theme"><ThemeToggle /></span>
       <span class="divider" aria-hidden="true"></span>
       <a class="sign-in font-mono upper" href={site.signInUrl}>Sign in</a>
@@ -182,6 +186,30 @@ const { site } = Astro.props;
   .sfx[aria-pressed="false"] .mute { display: inline; }
   .sfx[aria-pressed="false"] { color: var(--muted); }
 
+  /* Volume: six notched steps, drawn as ticks behind the thumb. */
+  .vol { display: inline-flex; align-items: center; padding: 0 6px; }
+  .vol input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 64px;
+    height: 14px;
+    margin: 0;
+    background:
+      repeating-linear-gradient(90deg, var(--ink) 0 1.5px, transparent 1.5px calc((100% - 1.5px) / 5)) center / 100% 8px no-repeat,
+      linear-gradient(var(--hairline), var(--hairline)) center / 100% 1px no-repeat;
+    cursor: pointer;
+  }
+  .vol input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 14px;
+    background: var(--accent);
+    border: 0;
+  }
+  .vol input::-moz-range-thumb { width: 10px; height: 14px; background: var(--accent); border: 0; border-radius: 0; }
+  .vol input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .sfx[aria-pressed="false"] ~ .vol { opacity: 0.4; }
+
   .divider {
     width: 1px;
     height: 18px;
@@ -238,6 +266,7 @@ const { site } = Astro.props;
   }
 
   @media (max-width: 520px) {
+    .vol { display: none; }
     .est { display: none; }
     .icon { display: none; }
     .divider { margin: 0 8px 0 4px; }

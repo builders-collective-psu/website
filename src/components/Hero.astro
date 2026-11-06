@@ -62,6 +62,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
         </div>
       </div>
 
+      <div class="stats">
       <dl class="figures">
         {
           figures.map((f) => (
@@ -73,11 +74,18 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
             </div>
           ))
         }
-        <div class="figure">
-          <dt class="font-mono upper">Wins / person</dt>
-          <dd data-wins-per-person title="Wins per person per outing, across every event we went to">—</dd>
-        </div>
       </dl>
+      <button type="button" class="boombox font-mono upper" data-boombox aria-pressed="true" title="Jazz soundtrack">
+        <svg viewBox="0 0 32 20" aria-hidden="true" focusable="false">
+          <rect x="1" y="5" width="30" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <path d="M8 5V2.5h16V5" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <circle class="spk" cx="8.5" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <circle class="spk" cx="23.5" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <rect x="14" y="9" width="4" height="2" fill="currentColor" />
+        </svg>
+        <span data-boombox-label>Jazz on</span>
+      </button>
+      </div>
     </div>
   </div>
 </section>
@@ -195,7 +203,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       const name = e.detail;
       const index = groups.findIndex((g) => g._event.event === name);
       if (index < 0) return;
-      holdUntil = performance.now() + 4 * 640;
+      holdUntil = performance.now() + 4 * (window.__beatPeriod || 640);
       select(index);
       window.__sfx && window.__sfx.select();
     });
@@ -242,39 +250,45 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     window.addEventListener("resize", () => groups[current] && place(groups[current]));
 
     // ---------- The beat: hop each beat, shake the page on the bar ----------
-    const BEAT = 640;
-    let beat = 0;
-    let timer = 0;
+    // Driven by the page-wide beat clock in GameFX ("fx:beat").
     let inView = false;
+    let started = false;
 
-    function tick() {
-      beat++;
+    window.addEventListener("fx:beat", (event) => {
+      if (!started || !inView || reduced || !groups.length) return;
+      const { down } = event.detail;
       if (!held && performance.now() > holdUntil) select(current + 1);
       figure.classList.remove("is-kick");
       void figure.offsetWidth;
       figure.classList.add("is-kick");
-      window.__sfx && window.__sfx.beat(beat % 4 === 0);
-      if (beat % 4 === 0 && main) {
+      // With the soundtrack off, mark the beat with a tick instead.
+      if (!(window.__music && window.__music.on)) window.__sfx && window.__sfx.beat(down);
+      if (down && main) {
         main.classList.remove("is-jolt");
         void main.offsetWidth;
         main.classList.add("is-jolt");
       }
-    }
-
-    function run() {
-      const go = inView && !document.hidden && groups.length && !reduced;
-      if (go && !timer) timer = setInterval(tick, BEAT);
-      if (!go && timer) {
-        clearInterval(timer);
-        timer = 0;
-      }
-    }
+    });
 
     new IntersectionObserver((entries) => {
       inView = entries.some((e) => e.isIntersecting);
-      run();
     }, { threshold: 0.35 }).observe(figure);
-    document.addEventListener("visibilitychange", run);
+
+    // Boombox: the jazz soundtrack, on by default whenever sound is on.
+    const boombox = document.querySelector("[data-boombox]");
+    const boomLabel = document.querySelector("[data-boombox-label]");
+    const paintBoombox = () => {
+      if (!boombox || !window.__music) return;
+      const on = window.__music.on;
+      boombox.setAttribute("aria-pressed", String(on));
+      if (boomLabel) boomLabel.textContent = on ? "Jazz on" : "Jazz off";
+    };
+    boombox && boombox.addEventListener("click", () => {
+      window.__music && window.__music.toggle();
+      paintBoombox();
+    });
+    window.addEventListener("fx:music", paintBoombox);
+    paintBoombox();
 
     function draw(events) {
       seed = 7;
@@ -289,7 +303,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       // Start on the newest group once the strokes have landed.
       setTimeout(() => {
         select(groups.length - 1);
-        run();
+        started = true;
       }, reduced ? 0 : Math.min(1800, strokeIndex * 14 + 300));
     }
 
@@ -310,10 +324,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
         // Outings: every event we went to, with who went and how many won.
         if (Array.isArray(data.outings)) {
           const outings = data.outings;
-          const wins = outings.reduce((total, o) => total + o.wins, 0);
-          const people = outings.reduce((total, o) => total + o.people, 0);
-          const ratio = document.querySelector("[data-wins-per-person]");
-          if (ratio && people) ratio.textContent = (wins / people).toFixed(2);
           const won = outings
             .filter((o) => o.wins > 0)
             .map((o) => ({
@@ -518,7 +528,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   .figure:nth-child(2) dd { animation-delay: -0.8s; }
   .figure:nth-child(3) dd { animation-delay: -1.6s; }
   .figure:nth-child(4) dd { animation-delay: -2.4s; }
-  .figure:nth-child(5) dd { animation-delay: -3s; }
   @keyframes bob {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
@@ -536,6 +545,31 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
 
   /* ---------- Base: pitch + figures ---------- */
+  /* Stats column: figures, with the boombox sitting above them on the right. */
+  .stats { display: flex; flex-direction: column; align-items: stretch; }
+  .stats .figures { order: 2; }
+  .boombox {
+    order: 1;
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--ink);
+    cursor: pointer;
+  }
+  .boombox svg { width: 28px; height: 18px; }
+  .boombox[aria-pressed="true"] .spk { animation: thump 640ms ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .boombox[aria-pressed="false"] { color: var(--muted); border-color: var(--hairline); }
+  @keyframes thump {
+    0% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
   .base {
     display: grid;
     grid-template-columns: minmax(240px, 0.8fr) 2fr;
@@ -554,7 +588,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
   .figures {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     margin: 0;
   }
   .figure { padding-left: 20px; border-left: 1px solid var(--hairline); }
@@ -569,7 +603,32 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   }
 
   @media (max-width: 1080px) {
-    .base { grid-template-columns: 1fr; gap: 32px; }
+    /* Stats column: figures, with the boombox sitting above them on the right. */
+  .stats { display: flex; flex-direction: column; align-items: stretch; }
+  .stats .figures { order: 2; }
+  .boombox {
+    order: 1;
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--ink);
+    cursor: pointer;
+  }
+  .boombox svg { width: 28px; height: 18px; }
+  .boombox[aria-pressed="true"] .spk { animation: thump 640ms ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .boombox[aria-pressed="false"] { color: var(--muted); border-color: var(--hairline); }
+  @keyframes thump {
+    0% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  .base { grid-template-columns: 1fr; gap: 32px; }
   }
   @media (max-width: 640px) {
     .hero { padding-block: 28px 32px; }
@@ -586,7 +645,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
   @media (prefers-reduced-motion: reduce) {
     .slam--left, .slam--right, .hero { animation: none; }
     .tally[data-drawn] .marks :global(.cluster line) { animation: none; }
-    .headline em, .figure dd, .corner { animation: none; }
+    .headline em, .figure dd, .corner, .boombox .spk { animation: none; }
     .reticle { transition: opacity 200ms ease; }
   }
 </style>

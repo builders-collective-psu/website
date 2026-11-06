@@ -6,28 +6,26 @@ import log from "@data/log.json";
 import HackathonLog from "./HackathonLog.astro";
 
 /**
- * Wins.
+ * Built & Won.
  *
- * With REAL_DATA set, every recap logged on the platform with won = true,
- * fetched after paint; the section stays hidden until real wins arrive,
- * because inventing wins when the API is down is worse than showing nothing.
+ * With live data this is a show that plays to the page beat: events on the
+ * left with their photos, and on the right one winning project at a time —
+ * what it was, who built it, links — followed by the team's LinkedIn posts
+ * ("larps") springing in one by one. After the last larp it moves to the next
+ * winning project at that event, then to the next event. Data comes from
+ * /api/builds; the section stays hidden until it arrives.
  *
- * Without it, the checked-in mock trophies render at build time and nothing
- * is fetched.
+ * Without live data the checked-in mock trophies render as a static list.
  */
 interface Props {
   endpoint?: string;
 }
 
-const { endpoint = "/api/recaps" } = Astro.props;
+const { endpoint = "/api/builds" } = Astro.props;
 
-const mockWins = trophies
-  .filter((t) => t.place === 1)
-  .sort((a, b) => (a.date < b.date ? 1 : -1));
-
+const mockWins = trophies.filter((t) => t.place === 1).sort((a, b) => (a.date < b.date ? 1 : -1));
 const mockPrize = mockWins.reduce((sum, t) => sum + (t.prize?.cash ?? 0), 0);
-const fmtCash = (n: number) =>
-  n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
+const fmtCash = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`);
 
 const meta = REAL_DATA
   ? '<span data-stat="teamWins" data-stat-guess="30">—</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal" data-stat-prefix="$" data-stat-guess="2000">—</span> IN PRIZES'
@@ -39,31 +37,50 @@ const meta = REAL_DATA
     <p class="section-divider font-mono upper">The collective / Our track record</p>
     <SectionHeader title="Built & Won" meta={meta} id="trophies-heading" />
 
-    <div class="trophy-grid" data-trophy-grid>
-      {
-        !REAL_DATA &&
-          mockWins.map((t) => (
-            <article class="trophy">
-              <div class="t-date font-mono">{t.dateShort}</div>
-              <div class="t-body">
-                <h3>{t.event}</h3>
-                <div class="where font-mono">{t.where} · {t.track}</div>
-                <p>{t.summary}</p>
-                <div class="t-prize font-mono">
-                  ↳ {fmtCash(t.prize.cash)} + {t.prize.extras}
+    {
+      REAL_DATA ? (
+        <div class="show" data-show>
+          <div class="left">
+            <figure class="stage" data-stage>
+              <div class="stage-frame" data-stage-frame />
+              <figcaption class="stage-cap font-mono upper" data-stage-cap />
+            </figure>
+            <ol class="events" data-events aria-label="Events we won at" />
+          </div>
+          <div class="right" aria-live="polite">
+            <div class="post-slot" data-post />
+            <div class="larp-slot" data-larp />
+            <div class="progress font-mono upper" data-progress />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div class="mock-grid">
+            {mockWins.map((t) => (
+              <article class="mock">
+                <div class="font-mono mock-date">{t.dateShort}</div>
+                <div>
+                  <h3>{t.event}</h3>
+                  <div class="font-mono mock-where">
+                    {t.where} · {t.track}
+                  </div>
+                  <p>{t.summary}</p>
+                  <div class="font-mono mock-prize">
+                    ↳ {fmtCash(t.prize.cash)} + {t.prize.extras}
+                  </div>
                 </div>
-              </div>
-              <div class="t-tag font-mono upper">★ 1ST</div>
-            </article>
-          ))
-      }
-    </div>
-    {REAL_DATA && (
-      <button type="button" class="trophy-toggle font-mono upper" data-trophy-toggle aria-expanded="false" hidden>
-        Show all
-      </button>
-    )}
-    {!REAL_DATA && <details class="all-results"><summary class="font-mono upper">Explore all {log.events.length} builds & results <span aria-hidden="true">↳</span></summary><HackathonLog log={log} embedded /></details>}
+              </article>
+            ))}
+          </div>
+          <details class="all-results">
+            <summary class="font-mono upper">
+              Explore all {log.events.length} builds & results <span aria-hidden="true">↳</span>
+            </summary>
+            <HackathonLog log={log} embedded />
+          </details>
+        </>
+      )
+    }
   </div>
 </section>
 
@@ -71,138 +88,260 @@ const meta = REAL_DATA
   <script is:inline define:vars={{ endpoint }}>
   (function () {
     const section = document.querySelector("[data-trophies]");
-    const grid = document.querySelector("[data-trophy-grid]");
-    if (!grid) return;
-
-    // Shared with the recap feed and gallery so the page makes one request.
-    window.__recaps =
-      window.__recaps ||
-      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
-        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
-        return response.json();
-      });
+    const show = document.querySelector("[data-show]");
+    if (!section || !show) return;
+    const frame = show.querySelector("[data-stage-frame]");
+    const cap = show.querySelector("[data-stage-cap]");
+    const list = show.querySelector("[data-events]");
+    const postSlot = show.querySelector("[data-post]");
+    const larpSlot = show.querySelector("[data-larp]");
+    const progress = show.querySelector("[data-progress]");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const el = (tag, className, text) => {
       const node = document.createElement(tag);
       if (className) node.className = className;
-      if (text !== undefined && text !== null) node.textContent = String(text);
+      if (text !== undefined && text !== null && text !== "") node.textContent = String(text);
       return node;
     };
-
-    // "Oct 17–18, 2026" from the platform's YYYY-MM-DD start and end.
-    const eventDates = (start, end) => {
+    const link = (label, href) => {
+      const a = el("a", "chip font-mono upper", label);
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      return a;
+    };
+    const img = (src, alt, className) => {
+      const i = el("img", className);
+      i.src = src;
+      i.alt = alt;
+      i.loading = "lazy";
+      i.referrerPolicy = "no-referrer";
+      i.addEventListener("error", () => i.remove());
+      return i;
+    };
+    const money = (cents) => (typeof cents === "number" && cents > 0 ? `$${Math.round(cents / 100).toLocaleString("en-US")}` : null);
+    const fmtDates = (start, end) => {
       if (!start) return "";
-      const parse = (iso) => {
+      const parts = (iso) => {
         const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
-        return { y, m, d, date: new Date(Date.UTC(y, m - 1, d)) };
+        return { y, d, mon: new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }) };
       };
-      const month = (p) => p.date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
-      const a = parse(start);
-      const b = end ? parse(end) : a;
-      if (Number.isNaN(a.date.getTime())) return "";
-      if (a.y === b.y && a.m === b.m && a.d === b.d) return `${month(a)} ${a.d}, ${a.y}`;
-      if (a.y === b.y && a.m === b.m) return `${month(a)} ${a.d}–${b.d}, ${a.y}`;
-      if (a.y === b.y) return `${month(a)} ${a.d} – ${month(b)} ${b.d}, ${a.y}`;
-      return `${month(a)} ${a.d}, ${a.y} – ${month(b)} ${b.d}, ${b.y}`;
+      const a = parts(start);
+      const b = parts(end || start);
+      if (a.y !== b.y) return `${a.mon} ${a.d}, ${a.y} – ${b.mon} ${b.d}, ${b.y}`;
+      if (a.mon !== b.mon) return `${a.mon} ${a.d} – ${b.mon} ${b.d}, ${a.y}`;
+      if (a.d !== b.d) return `${a.mon} ${a.d}–${b.d}, ${a.y}`;
+      return `${a.mon} ${a.d}, ${a.y}`;
+    };
+    const spring = (node) => {
+      node.classList.remove("spring");
+      void node.offsetWidth;
+      node.classList.add("spring");
     };
 
-    const money = (cents) =>
-      typeof cents === "number" && cents > 0
-        ? `$${Math.round(cents / 100).toLocaleString("en-US")}`
-        : null;
+    let events = [];
+    let ei = 0; // event
+    let pi = 0; // project at that event
+    let li = -1; // larp (-1: the project card on its own)
+    let beatsLeft = 0;
+    let photoIndex = 0;
+    let inView = false;
 
-    // Bunker stores some names HTML-escaped (e.g. &#39;); show them plainly.
-    const decoder = document.createElement("textarea");
-    const plain = (text) => {
-      decoder.innerHTML = text == null ? "" : String(text);
-      return decoder.value;
-    };
+    // Beats each step holds for.
+    const HOLD_PROJECT = 4;
+    const HOLD_LARP = 5;
+    const HOLD_ALONE = 7;
 
-    // Colour and size step up with the count: 1, 2, 3, 4–5, 6+.
-    const tier = (n) => (n >= 6 ? 5 : n >= 4 ? 4 : n);
-
-    // One card per event. Every winning team is listed by its members, and the
-    // multiplier counts wins per person, matching the hero's figure.
-    function groupByEvent(wins) {
-      const groups = new Map();
-      wins.forEach((win) => {
-        // Keyed by name, not slug: the platform has some events entered twice.
-        const key = plain(win.event).toLowerCase().replace(/\s+/g, " ").trim();
-        if (!groups.has(key)) groups.set(key, { event: win.event, start: null, end: null, teams: [] });
-        const group = groups.get(key);
-        group.teams.push(win);
-        if (!group.start && win.eventStart) {
-          group.start = win.eventStart;
-          group.end = win.eventEnd || null;
-        }
-      });
-      return [...groups.values()]
-        .map((group) => ({
-          ...group,
-          count: group.teams.reduce((total, team) => total + Math.max(1, (team.people || []).length), 0),
-        }))
-        // Newest event first (by start, then end, then name); undated last.
-        .sort(
-          (a, b) =>
-            String(b.start || "").localeCompare(String(a.start || "")) ||
-            String(b.end || "").localeCompare(String(a.end || "")) ||
-            plain(a.event).localeCompare(plain(b.event)),
-        );
-    }
-
-    function renderEvent(group) {
-      const article = el("article", "trophy");
-      const body = el("div", "t-body");
-      body.appendChild(el("h3", null, plain(group.event)));
-      const when = eventDates(group.start, group.end);
-      if (when) body.appendChild(el("div", "t-when font-mono upper", when));
-
-      const teams = el("ul", "t-teams");
-      group.teams.forEach((team) => {
-        const item = el("li");
-        const names = (team.people || []).map(plain).join(", ") || plain(team.team) || "—";
-        item.appendChild(el("span", "t-names", names));
-        const what = [plain(team.prizeName || team.placement || "Winner"), money(team.prizeCents)]
-          .filter(Boolean)
-          .join(" · ");
-        item.appendChild(el("span", "t-what font-mono", what));
-        teams.appendChild(item);
-      });
-      body.appendChild(teams);
-      article.appendChild(body);
-
-      const mult = el("div", `t-mult t-mult--${tier(group.count)} font-mono`, `${group.count}×`);
-      mult.setAttribute("aria-label", `${group.count} ${group.count === 1 ? "win" : "wins"}`);
-      article.appendChild(mult);
-      return article;
-    }
-
-    const PREVIEW = 4;
-    const toggle = document.querySelector("[data-trophy-toggle]");
-
-    window.__recaps
-      .then((data) => {
-        const wins = Array.isArray(data.wins) ? data.wins : [];
-        if (!wins.length) return;
-        const groups = groupByEvent(wins);
-        groups.forEach((group) => grid.appendChild(renderEvent(group)));
-
-        // Collapsed by default: a preview, then the rest on request.
-        if (toggle && groups.length > PREVIEW) {
-          const label = () =>
-            grid.classList.contains("is-collapsed") ? `Show all ${groups.length} events ↓` : "Show fewer ↑";
-          grid.classList.add("is-collapsed");
-          toggle.textContent = label();
-          toggle.hidden = false;
-          toggle.addEventListener("click", () => {
-            const collapsing = !grid.classList.contains("is-collapsed");
-            grid.classList.toggle("is-collapsed");
-            toggle.setAttribute("aria-expanded", String(!collapsing));
-            toggle.textContent = label();
-            if (collapsing) section?.scrollIntoView({ block: "start" });
+    function renderEvents() {
+      list.replaceChildren(
+        ...events.map((event, i) => {
+          const item = el("li", "ev");
+          const button = el("button", "ev-btn");
+          button.type = "button";
+          button.appendChild(el("span", "ev-name", event.event));
+          button.appendChild(el("span", "ev-date font-mono upper", fmtDates(event.start, event.end)));
+          const count = event.projects.reduce((t, p) => t + Math.max(1, p.members.length), 0);
+          const mult = el("span", `ev-mult ev-mult--${count >= 6 ? 5 : count >= 4 ? 4 : count} font-mono`, `${count}×`);
+          button.appendChild(mult);
+          button.addEventListener("click", () => {
+            goEvent(i);
+            window.__sfx && window.__sfx.select();
           });
-        }
-        section?.removeAttribute("hidden");
+          item.appendChild(button);
+          return item;
+        }),
+      );
+    }
+
+    function renderPhoto() {
+      const event = events[ei];
+      const project = event.projects[pi];
+      const photos = [...(project.photos || []), ...event.photos.filter((p) => !(project.photos || []).includes(p))];
+      frame.replaceChildren();
+      const word = () => {
+        frame.replaceChildren(el("span", "stage-word", event.event));
+      };
+      if (photos.length) {
+        const src = photos[photoIndex % photos.length];
+        const picture = img(src, `${event.event} — ${project.title || "winning project"}`, "stage-img");
+        // A photo that will not load falls back to the event's name.
+        picture.addEventListener("error", word);
+        frame.appendChild(picture);
+      } else {
+        word();
+      }
+      spring(frame);
+      cap.textContent = [event.event, fmtDates(event.start, event.end)].filter(Boolean).join("  ·  ");
+    }
+
+    function renderProject() {
+      const event = events[ei];
+      const project = event.projects[pi];
+      const card = el("article", "post");
+      const top = el("div", "post-top font-mono upper");
+      top.appendChild(el("span", "post-place", project.placement || "Winner"));
+      const cash = money(project.prizeCents);
+      top.appendChild(el("span", "post-event", [event.event, cash].filter(Boolean).join("  ·  ")));
+      card.appendChild(top);
+      card.appendChild(el("h3", "post-title", project.title || project.team || "Winning project"));
+      if (project.prize && project.prize !== project.placement) card.appendChild(el("p", "post-prize font-mono", `↳ ${project.prize}`));
+      if (project.summary) card.appendChild(el("p", "post-summary", project.summary));
+      if (project.track) card.appendChild(el("p", "post-track font-mono upper", `Track · ${project.track}`));
+
+      const team = el("ul", "post-team");
+      project.members.forEach((m) => {
+        const li = el("li", "member");
+        if (m.image) li.appendChild(img(m.image, "", "avatar"));
+        else li.appendChild(el("span", "avatar avatar--blank", (m.name || "?").slice(0, 1)));
+        li.appendChild(el("span", "member-name", m.name));
+        team.appendChild(li);
+      });
+      card.appendChild(team);
+
+      const links = el("div", "post-links");
+      if (project.devpost) links.appendChild(link("Devpost ↗", project.devpost));
+      if (project.github) links.appendChild(link("GitHub ↗", project.github));
+      if (links.childNodes.length) card.appendChild(links);
+
+      postSlot.replaceChildren(card);
+      spring(card);
+    }
+
+    function renderLarp() {
+      const project = events[ei].projects[pi];
+      const larp = li >= 0 ? project.larps[li] : null;
+      if (!larp) {
+        larpSlot.replaceChildren();
+        larpSlot.classList.toggle("is-empty", true);
+        return;
+      }
+      larpSlot.classList.remove("is-empty");
+      const card = el("article", "larp");
+      const head = el("div", "larp-head");
+      if (larp.authorImage) head.appendChild(img(larp.authorImage, "", "avatar"));
+      head.appendChild(el("span", "larp-author", larp.author));
+      head.appendChild(el("span", "larp-where font-mono upper", "on LinkedIn"));
+      card.appendChild(head);
+      const body = el("div", "larp-body");
+      if (larp.image) body.appendChild(img(larp.image, "", "larp-img"));
+      if (larp.text) body.appendChild(el("p", "larp-text", larp.text));
+      card.appendChild(body);
+      if (larp.url) card.appendChild(link("Read post ↗", larp.url));
+      larpSlot.replaceChildren(card);
+      spring(card);
+    }
+
+    function renderProgress() {
+      const event = events[ei];
+      const project = event.projects[pi];
+      const bits = [`Project ${pi + 1}/${event.projects.length}`];
+      if (project.larps.length) bits.push(li >= 0 ? `Post ${li + 1}/${project.larps.length}` : `${project.larps.length} posts`);
+      progress.textContent = bits.join("  ·  ");
+      [...list.children].forEach((item, i) => item.classList.toggle("is-on", i === ei));
+      const active = list.children[ei];
+      if (active) {
+        // Scroll the list, not the page.
+        const top = active.offsetTop - list.clientHeight / 2 + active.clientHeight / 2;
+        list.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
+      }
+    }
+
+    function hold() {
+      const project = events[ei].projects[pi];
+      if (li >= 0) return HOLD_LARP;
+      return project.larps.length ? HOLD_PROJECT : HOLD_ALONE;
+    }
+
+    function goEvent(i) {
+      ei = (i + events.length) % events.length;
+      pi = 0;
+      li = -1;
+      photoIndex = 0;
+      renderPhoto();
+      renderProject();
+      renderLarp();
+      renderProgress();
+      beatsLeft = hold();
+    }
+
+    function step() {
+      const event = events[ei];
+      const project = event.projects[pi];
+      if (li + 1 < project.larps.length) {
+        li++;
+        renderLarp();
+        renderProgress();
+      } else if (pi + 1 < event.projects.length) {
+        pi++;
+        li = -1;
+        photoIndex = 0;
+        renderPhoto();
+        renderProject();
+        renderLarp();
+        renderProgress();
+      } else {
+        goEvent(ei + 1);
+        window.__sfx && window.__sfx.select();
+        return;
+      }
+      window.__sfx && window.__sfx.select();
+      beatsLeft = hold();
+    }
+
+    // Hovering the show pauses it, so people can read.
+    let paused = false;
+    show.addEventListener("pointerenter", () => (paused = true));
+    show.addEventListener("pointerleave", () => (paused = false));
+
+    window.addEventListener("fx:beat", (e) => {
+      if (!events.length || !inView || paused || reduced) return;
+      // Photos turn over every other bar.
+      if (e.detail.n % 8 === 0) {
+        photoIndex++;
+        renderPhoto();
+      }
+      if (--beatsLeft <= 0) step();
+    });
+
+    new IntersectionObserver((entries) => {
+      inView = entries.some((entry) => entry.isIntersecting);
+    }, { threshold: 0.3 }).observe(show);
+
+    window.__builds =
+      window.__builds ||
+      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
+        if (!response.ok) throw new Error(`builds HTTP ${response.status}`);
+        return response.json();
+      });
+
+    window.__builds
+      .then((data) => {
+        events = (Array.isArray(data.events) ? data.events : []).filter((e) => e.projects && e.projects.length);
+        if (!events.length) return;
+        renderEvents();
+        goEvent(0);
+        section.removeAttribute("hidden");
       })
       .catch(() => {
         /* endpoint missing or upstream down — section stays hidden */
@@ -218,167 +357,187 @@ const meta = REAL_DATA
     border-bottom: 1.5px solid var(--ink);
   }
   .sec[hidden] { display: none; }
-  .section-divider { color: var(--muted); font-size: 11px; letter-spacing: .14em; margin: 0 0 24px; }
-  .all-results { margin-top: 32px; border-top: 1.5px solid var(--ink); }
-  .all-results summary { cursor: pointer; padding: 20px 0; font-size: 12px; letter-spacing: .08em; }
-  .all-results summary:hover { color: var(--accent); }
-  .all-results summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .section-divider { color: var(--muted); font-size: 11px; letter-spacing: 0.14em; margin: 0 0 24px; }
 
-  .trophy-grid {
+  /* ---------- The show ---------- */
+  .show {
     display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 0;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     border-top: 1.5px solid var(--ink);
-  }
-
-  .trophy-grid :global(.trophy) {
-    grid-column: span 6;
     border-bottom: 1.5px solid var(--ink);
-    border-right: 1.5px solid var(--ink);
-    padding: 28px 24px 24px;
+  }
+  .left { border-right: 1.5px solid var(--ink); display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  .right { padding: 28px 0 28px 32px; display: grid; gap: 18px; align-content: start; min-height: 640px; }
+
+  .stage { margin: 0; padding: 24px 24px 0 0; }
+  .stage-frame {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border: 1.5px solid var(--ink);
+    background: var(--paper-2);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  .stage-frame :global(.stage-img) { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .stage-frame :global(.stage-word) {
+    padding: 24px;
+    font-size: clamp(28px, 3.4vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .stage-cap { margin-top: 10px; font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+
+  .events {
+    position: relative;
+    list-style: none;
+    margin: 16px 0 0;
+    padding: 0 24px 24px 0;
+    max-height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .events :global(.ev-btn) {
+    width: 100%;
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 20px;
-    align-items: start;
-    transition: background var(--dur-normal) ease;
-  }
-  .trophy-grid :global(.trophy:nth-child(2n)) { border-right: none; }
-  .trophy-grid :global(.trophy:hover) { background: var(--paper-2); }
-  .trophy-grid :global(.trophy:hover .t-tag) {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--paper);
-  }
-
-  .trophy-grid :global(.t-date) {
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    border: 1px solid var(--ink);
-    padding: 6px 8px;
-    line-height: 1;
-    align-self: start;
-    white-space: nowrap;
-  }
-
-  .trophy-grid :global(.t-body h3) {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin: 0 0 4px;
-    line-height: 1.05;
-  }
-  .trophy-grid :global(.t-body .where) {
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-  }
-  .trophy-grid :global(.t-body p) {
-    font-size: 15px;
-    line-height: 1.4;
-    margin: 12px 0 0;
-    max-width: 44ch;
-  }
-
-  .trophy-grid :global(.t-tag) {
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 5px 9px;
-    border: 1px solid var(--ink);
-    align-self: start;
-    white-space: nowrap;
-    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease,
-      color var(--dur-fast) ease;
-  }
-
-  .trophy-grid.is-collapsed :global(.trophy:nth-child(n + 5)) { display: none; }
-
-  .trophy-toggle {
-    display: block;
-    width: 100%;
-    padding: 18px 0;
-    font-size: 12px;
-    letter-spacing: 0.1em;
+    grid-template-areas: "name mult" "date mult";
+    gap: 2px 12px;
+    align-items: center;
+    padding: 10px 12px;
     text-align: left;
+    font: inherit;
     color: var(--ink);
     background: none;
     border: 0;
-    border-bottom: 1.5px solid var(--ink);
+    border-bottom: 1px solid var(--hairline);
     cursor: pointer;
+    transition: background var(--dur-fast) ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .trophy-toggle[hidden] { display: none; }
-  .trophy-toggle:hover { color: var(--accent); }
-  .trophy-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .events :global(.ev-name) { grid-area: name; font-weight: 600; font-size: 15px; }
+  .events :global(.ev-date) { grid-area: date; font-size: 10px; letter-spacing: 0.12em; color: var(--muted); }
+  .events :global(.ev-mult) { grid-area: mult; font-size: 20px; font-weight: 700; color: var(--muted); }
+  .events :global(.ev-mult--2) { color: var(--ink); }
+  .events :global(.ev-mult--3) { color: #e0a100; }
+  .events :global(.ev-mult--4) { color: var(--accent); }
+  .events :global(.ev-mult--5) { color: #e5254b; }
+  .events :global(.ev.is-on .ev-btn) { background: var(--ink); color: var(--paper); transform: translateX(6px); }
+  .events :global(.ev.is-on .ev-date) { color: var(--inverse-muted); }
 
-  .trophy-grid :global(.t-when) {
-    margin-top: 6px;
+  /* Project card */
+  .post-slot :global(.post) {
+    border: 1.5px solid var(--ink);
+    padding: 24px;
+    background: var(--paper);
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+  .post-slot :global(.post-top) {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
     font-size: 11px;
     letter-spacing: 0.12em;
-    color: var(--muted);
   }
-
-  .trophy-grid :global(.t-teams) {
-    list-style: none;
-    margin: 14px 0 0;
-    padding: 0;
-    display: grid;
-    gap: 10px;
-  }
-  .trophy-grid :global(.t-teams li) { display: grid; gap: 2px; }
-  .trophy-grid :global(.t-names) { font-size: 15px; font-weight: 600; line-height: 1.35; }
-  .trophy-grid :global(.t-what) {
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    line-height: 1.4;
-  }
-
-  /* Win multiplier: bigger, hotter and livelier as the count climbs. */
-  .trophy-grid :global(.t-mult) {
-    --tint: var(--muted);
-    align-self: start;
-    min-width: 2.2em;
-    font-size: 40px;
+  .post-slot :global(.post-place) { background: var(--accent); color: #0b1220; padding: 3px 8px; font-weight: 700; }
+  .post-slot :global(.post-event) { color: var(--muted); }
+  .post-slot :global(.post-title) {
+    margin: 16px 0 6px;
+    font-size: clamp(28px, 3.2vw, 44px);
     font-weight: 700;
+    letter-spacing: -0.03em;
     line-height: 1;
-    letter-spacing: -0.04em;
-    text-align: right;
-    color: var(--tint);
-    transform-origin: right center;
-    animation: t-zoom 4s ease-in-out infinite;
   }
-  .trophy-grid :global(.t-mult--1) { --tint: var(--muted); animation: none; }
-  .trophy-grid :global(.t-mult--2) { --tint: var(--ink); }
-  .trophy-grid :global(.t-mult--3) { --tint: #E0A100; }
-  .trophy-grid :global(.t-mult--4) { --tint: var(--accent); }
-  .trophy-grid :global(.t-mult--5) { --tint: #E5254B; text-shadow: 0 0 18px color-mix(in srgb, #E5254B 45%, transparent); }
+  .post-slot :global(.post-prize) { margin: 0; font-size: 12px; color: var(--accent); font-weight: 700; }
+  .post-slot :global(.post-summary) { margin: 14px 0 0; font-size: 17px; line-height: 1.4; max-width: 56ch; }
+  .post-slot :global(.post-track) { margin: 12px 0 0; font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
+  .post-slot :global(.post-team) { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 18px; }
+  .post-slot :global(.member) { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  .show :global(.avatar) {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--ink);
+    flex: none;
+  }
+  .show :global(.avatar--blank) {
+    display: inline-grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--paper-2);
+  }
+  .post-slot :global(.post-links), .larp-slot :global(.larp) { display: flex; gap: 10px; flex-wrap: wrap; }
+  .post-slot :global(.post-links) { margin-top: 18px; }
+  .show :global(.chip) {
+    display: inline-flex;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    border: 1px solid var(--ink);
+  }
+  .show :global(.chip:hover) { background: var(--ink); color: var(--paper); }
 
-  @keyframes t-zoom {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.12); }
+  /* Larp card, under the project */
+  .larp-slot { min-height: 200px; }
+  .larp-slot :global(.larp) {
+    flex-direction: column;
+    gap: 12px;
+    margin-left: 28px;
+    padding: 18px;
+    border: 1px solid var(--ink);
+    border-left: 4px solid var(--accent);
+    background: var(--paper-2);
+  }
+  .larp-slot :global(.larp-head) { display: flex; align-items: center; gap: 10px; }
+  .larp-slot :global(.larp-author) { font-weight: 700; font-size: 14px; }
+  .larp-slot :global(.larp-where) { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
+  .larp-slot :global(.larp-body) { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
+  .larp-slot :global(.larp-img) { width: 120px; height: 90px; object-fit: cover; border: 1px solid var(--ink); }
+  .larp-slot :global(.larp-text) { margin: 0; font-size: 14px; line-height: 1.45; grid-column: auto; }
+  .larp-slot :global(.larp-body:not(:has(.larp-img)) .larp-text) { grid-column: 1 / -1; }
+
+  .progress { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
+
+  /* Springs in, game-card style. */
+  .show :global(.spring) { animation: spring-in 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  @keyframes spring-in {
+    0% { opacity: 0; transform: translateY(26px) scale(0.94) rotate(-1deg); }
+    60% { opacity: 1; }
+    100% { opacity: 1; transform: none; }
+  }
+
+  /* ---------- Mock (no live data) ---------- */
+  .mock-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1.5px solid var(--ink); }
+  .mock { display: grid; grid-template-columns: auto 1fr; gap: 20px; padding: 24px; border-bottom: 1.5px solid var(--ink); }
+  .mock:nth-child(odd) { border-right: 1.5px solid var(--ink); }
+  .mock h3 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.02em; }
+  .mock-date, .mock-where { font-size: 12px; color: var(--muted); }
+  .mock p { margin: 10px 0 0; }
+  .mock-prize { margin-top: 10px; font-size: 12px; color: var(--accent); font-weight: 700; }
+  .all-results { margin-top: 32px; border-top: 1.5px solid var(--ink); }
+  .all-results summary { cursor: pointer; padding: 20px 0; font-size: 12px; letter-spacing: 0.08em; }
+
+  @media (max-width: 960px) {
+    .show { grid-template-columns: 1fr; }
+    .left { border-right: 0; border-bottom: 1.5px solid var(--ink); }
+    .stage { padding-right: 0; }
+    .events { padding-right: 0; max-height: 220px; }
+    .right { padding: 24px 0; min-height: 0; }
+    .larp-slot :global(.larp) { margin-left: 12px; }
+    .mock-grid { grid-template-columns: 1fr; }
+    .mock:nth-child(odd) { border-right: 0; }
+  }
+  @media (max-width: 560px) {
+    .larp-slot :global(.larp-body) { grid-template-columns: 1fr; }
+    .larp-slot :global(.larp-img) { width: 100%; height: auto; aspect-ratio: 16 / 9; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .trophy-grid :global(.t-mult) { animation: none; }
-  }
-
-  .trophy-grid :global(.t-prize) {
-    font-size: 12px;
-    color: var(--accent);
-    font-weight: 700;
-    margin-top: 10px;
-    letter-spacing: 0.04em;
-  }
-
-  @media (max-width: 720px) {
-    .trophy-grid :global(.trophy) {
-      grid-column: span 12;
-      border-right: none;
-      grid-template-columns: 1fr auto;
-      gap: 12px 16px;
-      padding: 24px 0;
-    }
-    .trophy-grid :global(.trophy .t-mult) { font-size: 32px; }
+    .show :global(.spring) { animation: none; }
   }
 </style>
