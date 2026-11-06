@@ -204,34 +204,36 @@ const cards = team.map((m) => ({
     background: var(--paper);
   }
   .alumni-head { margin: 0; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); }
+  /* 3 × 3 grid of logos, each centred in its cell. */
   .logos {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: center;
-    gap: 22px 34px;
+    gap: 30px 24px;
   }
   .co { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); }
   /* Every logo rendered as a single-colour silhouette, inverted for dark. */
   .co img {
     display: block;
-    height: 26px;
+    height: 40px;
     width: auto;
-    max-width: 150px;
+    max-width: 100%;
     object-fit: contain;
     filter: brightness(0);
     opacity: 0.85;
     transition: opacity var(--dur-fast) ease;
   }
-  .co--mark img { height: 22px; }
-  .co-name { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; line-height: 1; }
-  .co--word .co-name { font-size: 19px; }
+  .co--mark img { height: 32px; }
+  .co-name { font-weight: 700; font-size: 22px; letter-spacing: -0.02em; line-height: 1; }
+  .co--word .co-name { font-size: 25px; }
   .co:hover img, .co:focus-visible img { opacity: 1; }
   /* Rhythm: a hop travels across the logos on the beat (GameFX), and every
      third one bobs gently on its own phase. */
-  .logos li { display: inline-flex; }
+  .logos li { display: flex; justify-content: center; min-width: 0; }
+  .co { max-width: 100%; }
   .logos li:nth-child(3n + 1) .co { animation: co-bob 3.2s ease-in-out infinite; }
   .logos li:nth-child(6n + 4) .co { animation-delay: -1.6s; }
   @keyframes co-bob {
@@ -337,6 +339,11 @@ const cards = team.map((m) => ({
   @media (max-width: 560px) {
     .grid { grid-template-columns: 1fr; }
     .alumni { grid-column: span 1; }
+    .logos { gap: 22px 14px; }
+    .co img { height: 26px; }
+    .co--mark img { height: 22px; }
+    .co-name { font-size: 16px; }
+    .co--word .co-name { font-size: 17px; }
     .card-info .nm { font-size: 18px; }
   }
 </style>
