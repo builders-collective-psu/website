@@ -91,19 +91,26 @@
       "url": "https://nittanyai.psu.edu/"
     },
     {
-      "name": "MICS"
+      "name": "MICS",
+      "logo": "/logos/partners/mics.png",
+      "url": "https://www.instagram.com/micspsu/"
     },
     {
-      "name": "co.space"
+      "name": "co.space",
+      "logo": "/logos/partners/cospace.png",
+      "url": "https://thecospace.com/"
     },
     {
-      "name": "Google Developers Club"
+      "name": "Google Developers Club",
+      "logo": "/logos/partners/google-developers.png"
     },
     {
-      "name": "Hax Club"
+      "name": "Hax Club",
+      "logo": "/logos/partners/hax.png"
     },
     {
-      "name": "Open Build"
+      "name": "Open Build",
+      "logo": "/logos/partners/open-build.png"
     }
   ]
 }
