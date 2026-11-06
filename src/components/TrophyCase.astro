@@ -41,10 +41,6 @@ const meta = REAL_DATA
       REAL_DATA ? (
         <div class="show" data-show>
           <div class="left">
-            <figure class="stage" data-stage>
-              <div class="stage-frame" data-stage-frame />
-              <figcaption class="stage-cap font-mono upper" data-stage-cap />
-            </figure>
             <ol class="events" data-events aria-label="Events we won at" />
           </div>
           <div class="right" aria-live="polite">
@@ -90,8 +86,6 @@ const meta = REAL_DATA
     const section = document.querySelector("[data-trophies]");
     const show = document.querySelector("[data-show]");
     if (!section || !show) return;
-    const frame = show.querySelector("[data-stage-frame]");
-    const cap = show.querySelector("[data-stage-cap]");
     const list = show.querySelector("[data-events]");
     const postSlot = show.querySelector("[data-post]");
     const larpSlot = show.querySelector("[data-larp]");
@@ -145,7 +139,6 @@ const meta = REAL_DATA
     let pi = 0; // project at that event
     let li = -1; // larp (-1: the project card on its own)
     let beatsLeft = 0;
-    let photoIndex = 0;
     let inView = false;
 
     // Beats each step holds for.
@@ -153,46 +146,49 @@ const meta = REAL_DATA
     const HOLD_LARP = 5;
     const HOLD_ALONE = 7;
 
+    // Event cards, in the original format: name, dates, every winning team by
+    // its members with what they won, and the N× multiplier.
+    const tier = (n) => (n >= 6 ? 5 : n >= 4 ? 4 : n);
     function renderEvents() {
       list.replaceChildren(
         ...events.map((event, i) => {
           const item = el("li", "ev");
-          const button = el("button", "ev-btn");
-          button.type = "button";
-          button.appendChild(el("span", "ev-name", event.event));
-          button.appendChild(el("span", "ev-date font-mono upper", fmtDates(event.start, event.end)));
+          const card = el("article", "trophy");
+          card.tabIndex = 0;
+          card.setAttribute("role", "button");
+          const body = el("div", "t-body");
+          body.appendChild(el("h3", null, event.event));
+          const when = fmtDates(event.start, event.end);
+          if (when) body.appendChild(el("div", "t-when font-mono upper", when));
+          const teams = el("ul", "t-teams");
+          event.projects.forEach((project) => {
+            const row = el("li");
+            row.appendChild(el("span", "t-names", project.members.map((m) => m.name).join(", ") || project.team || "—"));
+            const what = [project.prize || project.placement || "Winner", money(project.prizeCents)].filter(Boolean).join(" · ");
+            row.appendChild(el("span", "t-what font-mono", what));
+            teams.appendChild(row);
+          });
+          body.appendChild(teams);
+          card.appendChild(body);
           const count = event.projects.reduce((t, p) => t + Math.max(1, p.members.length), 0);
-          const mult = el("span", `ev-mult ev-mult--${count >= 6 ? 5 : count >= 4 ? 4 : count} font-mono`, `${count}×`);
-          button.appendChild(mult);
-          button.addEventListener("click", () => {
+          const mult = el("div", `t-mult t-mult--${tier(count)} font-mono`, `${count}×`);
+          mult.setAttribute("aria-label", `${count} ${count === 1 ? "win" : "wins"}`);
+          card.appendChild(mult);
+          const pick = () => {
             goEvent(i);
             window.__sfx && window.__sfx.select();
+          };
+          card.addEventListener("click", pick);
+          card.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              pick();
+            }
           });
-          item.appendChild(button);
+          item.appendChild(card);
           return item;
         }),
       );
-    }
-
-    function renderPhoto() {
-      const event = events[ei];
-      const project = event.projects[pi];
-      const photos = [...(project.photos || []), ...event.photos.filter((p) => !(project.photos || []).includes(p))];
-      frame.replaceChildren();
-      const word = () => {
-        frame.replaceChildren(el("span", "stage-word", event.event));
-      };
-      if (photos.length) {
-        const src = photos[photoIndex % photos.length];
-        const picture = img(src, `${event.event} — ${project.title || "winning project"}`, "stage-img");
-        // A photo that will not load falls back to the event's name.
-        picture.addEventListener("error", word);
-        frame.appendChild(picture);
-      } else {
-        word();
-      }
-      spring(frame);
-      cap.textContent = [event.event, fmtDates(event.start, event.end)].filter(Boolean).join("  ·  ");
     }
 
     function renderProject() {
@@ -277,8 +273,6 @@ const meta = REAL_DATA
       ei = (i + events.length) % events.length;
       pi = 0;
       li = -1;
-      photoIndex = 0;
-      renderPhoto();
       renderProject();
       renderLarp();
       renderProgress();
@@ -295,8 +289,6 @@ const meta = REAL_DATA
       } else if (pi + 1 < event.projects.length) {
         pi++;
         li = -1;
-        photoIndex = 0;
-        renderPhoto();
         renderProject();
         renderLarp();
         renderProgress();
@@ -316,11 +308,6 @@ const meta = REAL_DATA
 
     window.addEventListener("fx:beat", (e) => {
       if (!events.length || !inView || paused || reduced) return;
-      // Photos turn over every other bar.
-      if (e.detail.n % 8 === 0) {
-        photoIndex++;
-        renderPhoto();
-      }
       if (--beatsLeft <= 0) step();
     });
 
@@ -366,66 +353,70 @@ const meta = REAL_DATA
     border-top: 1.5px solid var(--ink);
     border-bottom: 1.5px solid var(--ink);
   }
-  .left { border-right: 1.5px solid var(--ink); display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  .left { border-right: 1.5px solid var(--ink); min-height: 0; padding-right: 24px; }
   .right { padding: 28px 0 28px 32px; display: grid; gap: 18px; align-content: start; min-height: 640px; }
-
-  .stage { margin: 0; padding: 24px 24px 0 0; }
-  .stage-frame {
-    position: relative;
-    aspect-ratio: 4 / 3;
-    border: 1.5px solid var(--ink);
-    background: var(--paper-2);
-    overflow: hidden;
-    display: grid;
-    place-items: center;
-  }
-  .stage-frame :global(.stage-img) { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .stage-frame :global(.stage-word) {
-    padding: 24px;
-    font-size: clamp(28px, 3.4vw, 48px);
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    text-align: center;
-    text-transform: uppercase;
-  }
-  .stage-cap { margin-top: 10px; font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
 
   .events {
     position: relative;
     list-style: none;
-    margin: 16px 0 0;
-    padding: 0 24px 24px 0;
-    max-height: 300px;
+    margin: 0;
+    padding: 0;
+    max-height: 720px;
     overflow-y: auto;
     scrollbar-width: thin;
   }
-  .events :global(.ev-btn) {
-    width: 100%;
+
+  /* Event cards (original format) */
+  .events :global(.trophy) {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-areas: "name mult" "date mult";
-    gap: 2px 12px;
-    align-items: center;
-    padding: 10px 12px;
-    text-align: left;
-    font: inherit;
-    color: var(--ink);
-    background: none;
-    border: 0;
-    border-bottom: 1px solid var(--hairline);
+    gap: 16px;
+    align-items: start;
+    padding: 22px 20px 20px 0;
+    border-bottom: 1.5px solid var(--ink);
     cursor: pointer;
-    transition: background var(--dur-fast) ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: background var(--dur-normal) ease, padding var(--dur-normal) ease;
   }
-  .events :global(.ev-name) { grid-area: name; font-weight: 600; font-size: 15px; }
-  .events :global(.ev-date) { grid-area: date; font-size: 10px; letter-spacing: 0.12em; color: var(--muted); }
-  .events :global(.ev-mult) { grid-area: mult; font-size: 20px; font-weight: 700; color: var(--muted); }
-  .events :global(.ev-mult--2) { color: var(--ink); }
-  .events :global(.ev-mult--3) { color: #e0a100; }
-  .events :global(.ev-mult--4) { color: var(--accent); }
-  .events :global(.ev-mult--5) { color: #e5254b; }
-  .events :global(.ev.is-on .ev-btn) { background: var(--ink); color: var(--paper); transform: translateX(6px); }
-  .events :global(.ev.is-on .ev-date) { color: var(--inverse-muted); }
+  .events :global(.trophy:hover) { background: var(--paper-2); }
+  .events :global(.ev.is-on .trophy) {
+    background: var(--paper-2);
+    padding-left: 16px;
+    box-shadow: inset 4px 0 0 var(--accent);
+  }
+  .events :global(.trophy h3) {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .events :global(.t-when) { margin-top: 6px; font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+  .events :global(.t-teams) { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  .events :global(.t-teams li) { display: grid; gap: 2px; }
+  .events :global(.t-names) { font-size: 14px; font-weight: 600; line-height: 1.35; }
+  .events :global(.t-what) { font-size: 11px; letter-spacing: 0.04em; color: var(--muted); line-height: 1.4; }
+
+  .events :global(.t-mult) {
+    --tint: var(--muted);
+    min-width: 2.2em;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    text-align: right;
+    color: var(--tint);
+    transform-origin: right center;
+    animation: t-zoom 4s ease-in-out infinite;
+  }
+  .events :global(.t-mult--1) { animation: none; }
+  .events :global(.t-mult--2) { --tint: var(--ink); }
+  .events :global(.t-mult--3) { --tint: #e0a100; }
+  .events :global(.t-mult--4) { --tint: var(--accent); }
+  .events :global(.t-mult--5) { --tint: #e5254b; text-shadow: 0 0 18px color-mix(in srgb, #e5254b 45%, transparent); }
+  @keyframes t-zoom {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+  }
 
   /* Project card */
   .post-slot :global(.post) {
@@ -525,8 +516,8 @@ const meta = REAL_DATA
   @media (max-width: 960px) {
     .show { grid-template-columns: 1fr; }
     .left { border-right: 0; border-bottom: 1.5px solid var(--ink); }
-    .stage { padding-right: 0; }
-    .events { padding-right: 0; max-height: 220px; }
+    .left { padding-right: 0; }
+    .events { max-height: 360px; }
     .right { padding: 24px 0; min-height: 0; }
     .larp-slot :global(.larp) { margin-left: 12px; }
     .mock-grid { grid-template-columns: 1fr; }
@@ -538,6 +529,6 @@ const meta = REAL_DATA
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .show :global(.spring) { animation: none; }
+    .show :global(.spring), .events :global(.t-mult) { animation: none; }
   }
 </style>

@@ -32,6 +32,7 @@
     } catch (e) {}
 
     let ctx = null;
+    let meter = null;
     let master = null;
     const ready = () => {
       if (ctx) return ctx;
@@ -40,7 +41,17 @@
       ctx = new AC();
       master = ctx.createGain();
       master.gain.value = LEVELS[volume];
-      master.connect(ctx.destination);
+      // A limiter after the master so louder levels never clip.
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -10;
+      limiter.knee.value = 6;
+      limiter.ratio.value = 12;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.15;
+      master.connect(limiter).connect(ctx.destination);
+      meter = ctx.createAnalyser();
+      meter.fftSize = 2048;
+      limiter.connect(meter);
       return ctx;
     };
     let unlocked = false;
@@ -77,13 +88,13 @@
         if (now - lastHover < 60) return;
         lastHover = now;
         const pitch = Math.max(520, Math.min(1500, 1500 - Math.sqrt(size) * 22));
-        blip(pitch, { dur: 0.04, vol: 0.02 });
+        blip(pitch, { dur: 0.045, vol: 0.07 });
       },
       click() {
-        blip(520, { type: "triangle", dur: 0.09, vol: 0.05, slide: 1.6 });
+        blip(520, { type: "triangle", dur: 0.1, vol: 0.16, slide: 1.6 });
       },
       beat(down) {
-        blip(down ? 330 : 660, { type: "triangle", dur: down ? 0.08 : 0.04, vol: down ? 0.03 : 0.015 });
+        blip(down ? 330 : 660, { type: "triangle", dur: down ? 0.08 : 0.05, vol: down ? 0.1 : 0.06 });
       },
       // Impact: a short filtered noise hit over a low thud.
       clash() {
@@ -99,13 +110,13 @@
         band.type = "bandpass";
         band.frequency.value = 1800;
         const gain = ctx.createGain();
-        gain.gain.value = 0.05;
+        gain.gain.value = 0.2;
         noise.connect(band).connect(gain).connect(master);
         noise.start(t);
-        blip(90, { type: "sine", dur: 0.16, vol: 0.06, slide: 0.6 });
+        blip(180, { type: "triangle", dur: 0.18, vol: 0.2, slide: 0.5 });
       },
       select() {
-        blip(990, { dur: 0.05, vol: 0.02, slide: 1.25 });
+        blip(990, { dur: 0.06, vol: 0.08, slide: 1.25 });
       },
     };
 
@@ -130,7 +141,7 @@
     const bus = () => {
       if (!musicBus && ready()) {
         musicBus = ctx.createGain();
-        musicBus.gain.value = 0.55;
+        musicBus.gain.value = 0.85;
         musicBus.connect(master);
       }
       return musicBus;
@@ -196,17 +207,18 @@
         chord.root + 7,
         next.root + (n % 8 < 4 ? -1 : 1),
       ][pos];
-      tone(at, hz(bass), { type: "triangle", dur: beatSec * 0.95, vol: 0.09, cutoff: 900 });
+      // Up an octave from a real upright so laptop speakers can play it.
+      tone(at, hz(bass + 12), { type: "triangle", dur: beatSec * 0.95, vol: 0.24, cutoff: 1600 });
       // Ride on every beat, swung skip note after 2 and 4, foot hat on 2 and 4.
-      brush(at, 0.016);
+      brush(at, 0.07);
       if (pos === 1 || pos === 3) {
-        brush(at + beatSec * (2 / 3), 0.01);
-        brush(at, 0.012, 0.05, 4000);
+        brush(at + beatSec * (2 / 3), 0.045);
+        brush(at, 0.05, 0.05, 4000);
       }
       // Comping: a soft stab on the "and" of 2, sometimes on 4.
       const stab = pos === 1 ? at + beatSec * (2 / 3) : pos === 3 && bar % 2 === 0 ? at : null;
       if (stab !== null) {
-        chord.voicing.forEach((m, i) => tone(stab + i * 0.006, hz(m), { dur: 0.42, vol: 0.016, cutoff: 1800 }));
+        chord.voicing.forEach((m, i) => tone(stab + i * 0.006, hz(m), { type: "triangle", dur: 0.42, vol: 0.06, cutoff: 2200 }));
       }
     }
 
@@ -238,6 +250,24 @@
         nextBeat += BEAT;
       }
     }, 25);
+
+    // Read-only snapshot of the audio engine, for debugging in the console.
+    window.__audioState = () => ({
+      context: ctx ? ctx.state : "not created",
+      unlocked,
+      muted,
+      volume,
+      gain: master ? master.gain.value : null,
+      music: musicOn,
+      // Loudest sample in the last ~40 ms, in dBFS.
+      peakDb: (() => {
+        if (!meter) return null;
+        const data = new Float32Array(meter.fftSize);
+        meter.getFloatTimeDomainData(data);
+        const peak = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+        return peak ? Math.round(20 * Math.log10(peak)) : -Infinity;
+      })(),
+    });
 
     // Toggle
     const toggle = document.querySelector("[data-sfx-toggle]");
