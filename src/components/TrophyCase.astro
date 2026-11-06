@@ -246,6 +246,7 @@ const meta = REAL_DATA
     // The project's posts, as a feed: all of them stacked in a fixed window,
     // the current one at the top and the next peeking in below. Each step
     // slides the stack up to the next post instead of swapping cards.
+    const PREV_PEEK = 56; // px of the previous post kept in view
     let larpKey = "";
     let larpTrack = null;
     let autoScrolling = false;
@@ -282,7 +283,7 @@ const meta = REAL_DATA
         clearTimeout(settleTimer);
         settleTimer = setTimeout(() => {
           const cards = [...larpTrack.children];
-          const top = larpSlot.scrollTop;
+          const top = larpSlot.scrollTop + PREV_PEEK;
           let nearest = 0;
           cards.forEach((card, i) => {
             if (Math.abs(card.offsetTop - top) < Math.abs(cards[nearest].offsetTop - top)) nearest = i;
@@ -348,7 +349,9 @@ const meta = REAL_DATA
       });
       // The window is a real scroll area, so people can also scroll through
       // posts themselves; the show scrolls it the same way.
-      const target = cards[at] ? cards[at].offsetTop : 0;
+      // Leave the bottom of the previous post showing above, so it can be
+      // hovered to go back.
+      const target = cards[at] ? Math.max(0, cards[at].offsetTop - PREV_PEEK) : 0;
       autoScrolling = true;
       larpSlot.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
       clearTimeout(autoScrollTimer);
@@ -713,14 +716,16 @@ const meta = REAL_DATA
     overscroll-behavior: contain;
     scroll-snap-type: y proximity;
     scrollbar-width: thin;
-    mask-image: linear-gradient(#000 82%, transparent);
+    mask-image: linear-gradient(rgba(0, 0, 0, 0.35), #000 6%, #000 82%, transparent);
   }
   .larp-slot.is-empty { height: 0; }
   .larp-slot :global(.larp-track) { display: grid; gap: 14px; padding-bottom: 90px; }
-  .larp-slot :global(.larp) { scroll-snap-align: start; }
+  /* Snap so the previous post's bottom edge stays visible above. */
+  .larp-slot :global(.larp) { scroll-snap-align: start; scroll-margin-top: 56px; }
   .larp-slot :global(.larp) { opacity: 0.45; transition: opacity 320ms ease; }
   .larp-slot :global(.larp.is-on) { opacity: 1; }
-  .larp-slot :global(.larp.is-past) { opacity: 0.2; }
+  .larp-slot :global(.larp.is-past) { opacity: 0.5; }
+  .larp-slot :global(.larp.is-past:hover) { opacity: 0.8; }
   .larp-slot :global(.larp.pop) { animation: larp-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
   @keyframes larp-pop {
     0% { transform: scale(0.97); }
