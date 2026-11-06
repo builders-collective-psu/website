@@ -22,6 +22,19 @@ function canonicalUrl(raw: string): string {
   }
 }
 
+/**
+ * Last resort for a project title: the Devpost slug, minus Devpost's random
+ * suffix ("orca-03zer4" → "Orca"). Better than falling back to the team
+ * name, which for many teams is just the event's name.
+ */
+function titleFromDevpost(url: string | null): string | null {
+  const slug = url?.match(/devpost\.com\/software\/([^/?#]+)/i)?.[1];
+  if (!slug) return null;
+  const words = slug.split("-");
+  if (words.length > 1 && /^(?=.*\d)[a-z0-9]{5,7}$/i.test(words[words.length - 1])) words.pop();
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || null;
+}
+
 interface Larp {
   userId: string;
   userName: string;
@@ -109,7 +122,7 @@ export default async function handler(): Promise<Response> {
       group.photos.push(...photos.filter((url) => !group.photos.includes(url)));
       group.projects.push({
         id: recap.id,
-        title: fromBunker?.name ?? info?.title ?? recap.teamName ?? null,
+        title: fromBunker?.name ?? info?.title ?? titleFromDevpost(recap.devpostUrl) ?? recap.teamName ?? null,
         summary: fromBunker?.description ?? info?.summary ?? null,
         placement: recap.placement,
         prize: recap.prizeName ? decodeEntities(recap.prizeName) : null,
