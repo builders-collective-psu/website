@@ -47,7 +47,12 @@ const meta = REAL_DATA
             <div class="post-slot" data-post />
             <div class="larp-slot" data-larp />
             <div class="progress" data-progress>
-              <div class="bar" data-bar role="group" aria-label="Projects and posts at this event" />
+              <div class="bar-row">
+                <div class="bar" data-bar role="group" aria-label="Projects and posts at this event" />
+                <button type="button" class="pause font-mono upper" data-pause aria-pressed="false" aria-label="Pause">
+                  <span class="pause-icon" aria-hidden="true" />
+                </button>
+              </div>
               <div class="bar-label font-mono upper" data-bar-label />
             </div>
           </div>
@@ -243,6 +248,38 @@ const meta = REAL_DATA
     // slides the stack up to the next post instead of swapping cards.
     let larpKey = "";
     let larpTrack = null;
+    let autoScrolling = false;
+    let autoScrollTimer = 0;
+
+    // Scrolling the posts by hand makes the post it settles on the current
+    // one (and restarts its hold), so the progress bar follows along.
+    let settleTimer = 0;
+    larpSlot.addEventListener(
+      "scroll",
+      () => {
+        if (autoScrolling || !larpTrack) return;
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+          const cards = [...larpTrack.children];
+          const top = larpSlot.scrollTop;
+          let nearest = 0;
+          cards.forEach((card, i) => {
+            if (Math.abs(card.offsetTop - top) < Math.abs(cards[nearest].offsetTop - top)) nearest = i;
+          });
+          if (nearest !== li) {
+            li = nearest;
+            cards.forEach((card, i) => {
+              card.classList.toggle("is-on", i === li);
+              card.classList.toggle("is-past", i < li);
+            });
+            renderProgress({ scroll: false });
+            beatsLeft = hold();
+            paintFill();
+          }
+        }, 140);
+      },
+      { passive: true },
+    );
 
     function larpCard(larp) {
       const card = el("article", "larp");
@@ -288,7 +325,13 @@ const meta = REAL_DATA
         card.classList.toggle("is-on", li >= 0 && i === li);
         card.classList.toggle("is-past", li >= 0 && i < li);
       });
-      larpTrack.style.transform = `translateY(${-(cards[at] ? cards[at].offsetTop : 0)}px)`;
+      // The window is a real scroll area, so people can also scroll through
+      // posts themselves; the show scrolls it the same way.
+      const target = cards[at] ? cards[at].offsetTop : 0;
+      autoScrolling = true;
+      larpSlot.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
+      clearTimeout(autoScrollTimer);
+      autoScrollTimer = setTimeout(() => (autoScrolling = false), 700);
       if (li >= 0 && cards[li]) {
         cards[li].classList.remove("pop");
         void cards[li].offsetWidth;
@@ -435,6 +478,16 @@ const meta = REAL_DATA
       paintFill();
     }
 
+    // The pause button stops the show until pressed again.
+    const pauseButton = show.querySelector("[data-pause]");
+    let userPaused = false;
+    pauseButton.addEventListener("click", () => {
+      userPaused = !userPaused;
+      pauseButton.setAttribute("aria-pressed", String(userPaused));
+      pauseButton.setAttribute("aria-label", userPaused ? "Play" : "Pause");
+      show.classList.toggle("is-stopped", userPaused);
+    });
+
     // Hovering the show pauses it, so people can read.
     let paused = false;
     show.addEventListener("pointerenter", () => {
@@ -447,7 +500,7 @@ const meta = REAL_DATA
     });
 
     window.addEventListener("fx:beat", (e) => {
-      if (!events.length || !inView || paused || reduced) return;
+      if (!events.length || !inView || paused || userPaused || reduced) return;
       if (--beatsLeft <= 0) step();
       else paintFill({ bump: true });
     });
@@ -634,16 +687,16 @@ const meta = REAL_DATA
   /* A window onto the feed: the current post plus a peek at the next. */
   .larp-slot {
     position: relative;
-    height: 300px;
-    overflow: hidden;
-    mask-image: linear-gradient(#000 78%, transparent);
+    height: 320px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y proximity;
+    scrollbar-width: thin;
+    mask-image: linear-gradient(#000 82%, transparent);
   }
   .larp-slot.is-empty { height: 0; }
-  .larp-slot :global(.larp-track) {
-    display: grid;
-    gap: 14px;
-    transition: transform 520ms cubic-bezier(0.34, 1.3, 0.64, 1);
-  }
+  .larp-slot :global(.larp-track) { display: grid; gap: 14px; padding-bottom: 90px; }
+  .larp-slot :global(.larp) { scroll-snap-align: start; }
   .larp-slot :global(.larp) { opacity: 0.45; transition: opacity 320ms ease; }
   .larp-slot :global(.larp.is-on) { opacity: 1; }
   .larp-slot :global(.larp.is-past) { opacity: 0.2; }
@@ -715,6 +768,31 @@ const meta = REAL_DATA
   .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); }
   .bar :global(.seg.is-current) { border-color: var(--accent); }
   .bar :global(.seg:hover) { background: var(--paper-2); }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-row .bar { flex: 1; }
+  .pause {
+    flex: none;
+    width: 30px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--ink);
+    cursor: pointer;
+  }
+  .pause:hover { background: var(--ink); color: var(--paper); }
+  /* Two bars for pause; a triangle once paused (press to play). */
+  .pause-icon { width: 8px; height: 10px; border-left: 3px solid currentColor; border-right: 3px solid currentColor; }
+  .pause[aria-pressed="true"] .pause-icon {
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid currentColor;
+    border-right: 0;
+  }
   .bar-label { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
 
   /* Springs in, game-card style. */
@@ -752,7 +830,7 @@ const meta = REAL_DATA
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .larp-slot :global(.larp-track) { transition: none; }
+    .larp-slot { scroll-behavior: auto; }
     .larp-slot :global(.larp.pop) { animation: none; }
     .show :global(.spring), .events :global(.t-mult), .bar :global(.seg.is-beat) { animation: none; }
   }

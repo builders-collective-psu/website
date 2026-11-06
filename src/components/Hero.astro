@@ -36,7 +36,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     <Globe />
     <h1 id="hero-heading" class="headline display">
       <span class="slam slam--left">We ship <em>while</em></span>
-      <span class="slam slam--right">you sleep<span class="stop"><span class="stop-dot">.</span><span class="zzz" aria-hidden="true" data-zzz></span></span></span>
+      <span class="slam slam--right">you sleep<span class="stop"><span class="stop-dot">.</span><span class="zzz" aria-hidden="true" data-zzz></span><span class="ghost" aria-hidden="true" data-ghost><svg viewBox="0 0 16 22"><path d="M1 1v17l4.5-4.2 3 6.7 3-1.4-3-6.6H15z" /></svg><i class="ghost-ring"></i></span></span></span>
     </h1>
 
     <figure class="tally" data-tally aria-label="Wins, one stroke per person per win, grouped by event">
@@ -273,9 +273,17 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     // out a steady stream of Zs, one per beat. Once sound is on, no Zs.
     const stopDot = document.querySelector(".stop-dot");
     const zzz = document.querySelector("[data-zzz]");
+    const ghost = document.querySelector("[data-ghost]");
     let snores = 0;
     window.addEventListener("fx:beat", (event) => {
       if (reduced || !stopDot || !zzz) return;
+      // Sound is waiting on a first click: on the beat before each pulse, a
+      // little cursor fades in and "clicks" the full stop as a hint.
+      if (event.detail.n % 4 === 3 && ghost && window.__soundUnlocked && !window.__soundUnlocked()) {
+        ghost.classList.remove("is-clicking");
+        void ghost.offsetWidth;
+        ghost.classList.add("is-clicking");
+      }
       if (event.detail.down) {
         stopDot.classList.remove("is-pulse");
         void stopDot.offsetWidth;
@@ -478,6 +486,45 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     color: var(--accent);
     animation: snooze 3.4s ease-out forwards;
   }
+  /* Hint cursor: drifts in, clicks the full stop just before it pulses, leaves. */
+  .ghost {
+    position: absolute;
+    left: 0.12em;
+    bottom: 0.02em;
+    width: 0.16em;
+    height: 0.22em;
+    min-width: 14px;
+    min-height: 19px;
+    opacity: 0;
+    pointer-events: none;
+    text-transform: none;
+  }
+  .ghost svg { width: 100%; height: 100%; display: block; fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+  .ghost-ring {
+    position: absolute;
+    left: -6px;
+    top: -6px;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--accent);
+    border-radius: 999px;
+    opacity: 0;
+  }
+  .ghost:global(.is-clicking) { animation: ghost-move 900ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .ghost:global(.is-clicking) .ghost-ring { animation: ghost-ring 900ms ease-out; }
+  @keyframes ghost-move {
+    0% { opacity: 0; transform: translate(26px, 22px); }
+    35% { opacity: 1; transform: translate(0, 0); }
+    50% { transform: translate(0, 0) scale(0.82); }
+    62% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { opacity: 0; transform: translate(8px, 6px); }
+  }
+  @keyframes ghost-ring {
+    0%, 45% { opacity: 0; transform: scale(0.4); }
+    55% { opacity: 1; }
+    100% { opacity: 0; transform: scale(2.4); }
+  }
+
   @keyframes snooze {
     0% { opacity: 0; transform: translate(0, 0) scale(0.3) rotate(-10deg); }
     12% { opacity: 1; transform: translate(0.15em, -0.25em) scale(0.75) rotate(4deg); }
@@ -721,6 +768,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     .slam--left, .slam--right, .hero { animation: none; }
     .tally[data-drawn] .marks :global(.cluster line) { animation: none; }
     .zzz { display: none; }
+    .ghost { display: none; }
     .stop-dot { animation: none; }
     .headline em, .figure dd, .corner, .boombox .spk { animation: none; }
     .reticle { transition: opacity 200ms ease; }
