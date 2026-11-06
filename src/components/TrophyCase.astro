@@ -484,6 +484,17 @@ const meta = REAL_DATA
       return project.larps.length ? HOLD_PROJECT : HOLD_ALONE;
     }
 
+    // The hero tally asks to show an event here: select it and bring the
+    // section into view. Events are matched by name, the way both group them.
+    const nameKey = (name) => String(name || "").toLowerCase().replace(/\s+/g, " ").trim();
+    window.addEventListener("builds:show", (e) => {
+      const i = events.findIndex((ev) => nameKey(ev.event) === nameKey(e.detail));
+      section.scrollIntoView({ block: "start", behavior: reduced ? "auto" : "smooth" });
+      if (i < 0) return;
+      goEvent(i);
+      window.__sfx && window.__sfx.select();
+    });
+
     function goEvent(i, { scroll = true } = {}) {
       ei = (i + events.length) % events.length;
       pi = 0;

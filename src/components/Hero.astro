@@ -204,6 +204,15 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       wrap.addEventListener("blur", () => {
         held = false;
       });
+      // Click (or Enter/Space): jump down to this event in Built & Won.
+      const openInBuilds = () => window.dispatchEvent(new CustomEvent("builds:show", { detail: event.event }));
+      wrap.addEventListener("click", openInBuilds);
+      wrap.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openInBuilds();
+        }
+      });
       wrap.addEventListener("pointerenter", () => {
         held = true;
         select(groups.indexOf(wrap));

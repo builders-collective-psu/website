@@ -133,6 +133,30 @@ export function initGlobe(root: HTMLElement) {
     if (name) window.dispatchEvent(new CustomEvent("tally:pick", { detail: name }));
   });
 
+  // Hovering an orange dot selects that event too (and the globe turns to
+  // it). Only real pointer movement counts: as the globe turns, other dots
+  // slide under a still pointer and must not keep re-selecting.
+  let hoverX = -1;
+  let hoverY = -1;
+  let hoverTimer = 0;
+  let lastPicked = "";
+  dots.addEventListener("pointermove", (event) => {
+    if (event.clientX === hoverX && event.clientY === hoverY) return;
+    hoverX = event.clientX;
+    hoverY = event.clientY;
+    const name = (event.target as Element | null)?.getAttribute("data-event");
+    if (!name || name === lastPicked) return;
+    window.clearTimeout(hoverTimer);
+    hoverTimer = window.setTimeout(() => {
+      lastPicked = name;
+      window.dispatchEvent(new CustomEvent("tally:pick", { detail: name }));
+    }, 120);
+  });
+  dots.addEventListener("pointerleave", () => {
+    window.clearTimeout(hoverTimer);
+    lastPicked = "";
+  });
+
   window.addEventListener("tally:outings", (event) => {
     outings = ((event as CustomEvent).detail as Outing[]) ?? [];
     root.setAttribute("data-ready", "");
