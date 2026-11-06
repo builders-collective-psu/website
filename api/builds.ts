@@ -139,6 +139,13 @@ export default async function handler(): Promise<Response> {
       });
     }
 
+    // Within an event, the projects with the most LinkedIn posts lead
+    // (stable sort, so ties keep the feed's order).
+    for (const group of events.values()) {
+      group.projects.sort(
+        (a, b) => ((b as { larps: unknown[] }).larps.length) - ((a as { larps: unknown[] }).larps.length),
+      );
+    }
     const list = [...events.values()].sort((a, b) => String(b.start ?? "").localeCompare(String(a.start ?? "")));
     return json({ events: list, updatedAt: new Date().toISOString() });
   } catch (error) {
