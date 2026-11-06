@@ -75,6 +75,7 @@ export function initGlobe(root: HTMLElement) {
           dot.setAttribute("cx", x.toFixed(1));
           dot.setAttribute("cy", y.toFixed(1));
           dot.setAttribute("r", o.wins > 0 ? "3" : "2");
+          if (o.wins > 0) dot.setAttribute("data-event", o.event);
           return dot;
         }),
     );
@@ -120,6 +121,14 @@ export function initGlobe(root: HTMLElement) {
     };
     frame = requestAnimationFrame(step);
   }
+
+  // Orange dots are tappable: they pick that event in the tally. Pointerdown,
+  // not click: dots are redrawn while the globe turns, which would drop a click.
+  dots.addEventListener("pointerdown", (event) => {
+    const target = event.target as Element | null;
+    const name = target?.getAttribute("data-event");
+    if (name) window.dispatchEvent(new CustomEvent("tally:pick", { detail: name }));
+  });
 
   window.addEventListener("tally:outings", (event) => {
     outings = ((event as CustomEvent).detail as Outing[]) ?? [];

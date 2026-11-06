@@ -34,7 +34,17 @@
   .globe :global(.g-grid) { fill: none; stroke: var(--hairline); stroke-width: 0.75; }
   .globe :global(.g-land) { fill: color-mix(in srgb, var(--ink) 14%, transparent); stroke: none; }
   .globe :global(.g-dot) { fill: var(--muted); opacity: 0.55; }
-  .globe :global(.g-dot--won) { fill: var(--accent); opacity: 1; }
+  .globe :global(.g-dot--won) {
+    fill: var(--accent);
+    opacity: 1;
+    /* Tappable, with a hit area wider than the dot. */
+    pointer-events: all;
+    cursor: pointer;
+    stroke: transparent;
+    stroke-width: 14;
+    transition: r 160ms ease;
+  }
+  .globe :global(.g-dot--won:hover) { r: 5; }
 
   .globe :global(.g-beacon) {
     fill: none;

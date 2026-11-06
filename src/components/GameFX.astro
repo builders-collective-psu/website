@@ -9,6 +9,11 @@
  */
 ---
 
+<div class="fx-reticle" data-fx-reticle aria-hidden="true">
+  <span class="fx-c fx-tl"></span><span class="fx-c fx-tr"></span>
+  <span class="fx-c fx-bl"></span><span class="fx-c fx-br"></span>
+</div>
+
 <script is:inline>
   (function () {
     const KEY = "bc-sfx";
@@ -130,6 +135,63 @@
       { passive: true },
     );
 
+    // Game-menu brackets: spring to whatever interactive thing is under the
+    // pointer. Fixed-position, so it follows scrolling by re-measuring.
+    const reticle = document.querySelector("[data-fx-reticle]");
+    const TARGETS = "a, button, summary, main article, [data-sfx]";
+    let aimed = null;
+    let raf = 0;
+    const aim = () => {
+      if (!reticle || !aimed || !aimed.isConnected) return;
+      const r = aimed.getBoundingClientRect();
+      const pad = 6;
+      reticle.style.width = `${r.width + pad * 2}px`;
+      reticle.style.height = `${r.height + pad * 2}px`;
+      reticle.style.transform = `translate(${r.left - pad}px, ${r.top - pad}px)`;
+    };
+    if (reticle && window.matchMedia("(pointer: fine)").matches) {
+      document.addEventListener(
+        "pointerover",
+        (event) => {
+          const el = event.target instanceof Element ? event.target.closest(TARGETS) : null;
+          // The hero tally and the globe have their own selection.
+          const skip = !el || el.closest("[data-tally-marks], [data-globe]");
+          if (skip) {
+            if (!el) {
+              aimed = null;
+              reticle.classList.remove("is-on");
+            }
+            return;
+          }
+          if (el === aimed) return;
+          const first = !reticle.classList.contains("is-on");
+          aimed = el;
+          if (first) reticle.classList.add("no-move");
+          aim();
+          if (first) {
+            void reticle.offsetWidth;
+            reticle.classList.remove("no-move");
+          }
+          reticle.classList.add("is-on");
+          // Re-measure once hover lifts have settled.
+          setTimeout(aim, 240);
+        },
+        { passive: true },
+      );
+      document.addEventListener("pointerleave", () => {
+        aimed = null;
+        reticle.classList.remove("is-on");
+      });
+      window.addEventListener(
+        "scroll",
+        () => {
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(aim);
+        },
+        { passive: true },
+      );
+    }
+
     // Sections and cards spring in the first time they reach the screen.
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
       const io = new IntersectionObserver(
@@ -164,6 +226,40 @@
 </script>
 
 <style is:global>
+  /* Page-wide hover brackets, same look as the hero tally's selector. */
+  .fx-reticle {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition:
+      transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      height 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 160ms ease;
+  }
+  .fx-reticle.is-on { opacity: 1; }
+  .fx-reticle.no-move { transition: opacity 160ms ease; }
+  .fx-c {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--accent);
+    animation: fx-breathe 1280ms ease-in-out infinite;
+  }
+  .fx-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; --dx: -2px; --dy: -2px; }
+  .fx-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; --dx: 2px; --dy: -2px; }
+  .fx-bl { bottom: 0; left: 0; border-right: 0; border-top: 0; --dx: -2px; --dy: 2px; }
+  .fx-br { bottom: 0; right: 0; border-left: 0; border-top: 0; --dx: 2px; --dy: 2px; }
+  @keyframes fx-breathe {
+    0%, 100% { transform: none; }
+    50% { transform: translate(var(--dx), var(--dy)); }
+  }
+
   /* Springy buttons: lift on hover, squash on press. */
   .btn,
   .sign-in,
@@ -200,6 +296,8 @@
   main article.fx-wait.fx-in:hover { transform: translateY(-4px); }
 
   @media (prefers-reduced-motion: reduce) {
+    .fx-reticle { transition: opacity 160ms ease; }
+    .fx-c { animation: none; }
     .btn, .sign-in, .trophy-toggle, [data-event-open], main article { transition: none; }
     .btn:hover, .sign-in:hover, main article:hover { transform: none; }
   }

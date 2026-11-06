@@ -39,7 +39,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       <span class="slam slam--right">you sleep.</span>
     </h1>
 
-    <figure class="tally" data-tally aria-labelledby="tally-total">
+    <figure class="tally" data-tally aria-label="Wins, one stroke per person per win, grouped by event">
       <div class="stagebox">
         <div class="marks" data-tally-marks aria-hidden="true"></div>
         <div class="reticle" data-reticle aria-hidden="true">
@@ -51,11 +51,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
         <span class="now-name" data-now-name></span>
         <span class="now-meta font-mono upper" data-now-meta></span>
       </p>
-      <figcaption class="caption">
-        <span class="total" id="tally-total">
-          One stroke per person, per win.
-        </span>
-      </figcaption>
     </figure>
 
     <div class="base">
@@ -193,6 +188,17 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     let groups = [];
     let current = -1;
     let held = false;
+    let holdUntil = 0;
+
+    // A tap on the globe picks an event by name; hold it for a few beats.
+    window.addEventListener("tally:pick", (e) => {
+      const name = e.detail;
+      const index = groups.findIndex((g) => g._event.event === name);
+      if (index < 0) return;
+      holdUntil = performance.now() + 4 * 640;
+      select(index);
+      window.__sfx && window.__sfx.select();
+    });
 
     function place(wrap) {
       if (!reticle || !wrap) return;
@@ -243,7 +249,7 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
     function tick() {
       beat++;
-      if (!held) select(current + 1);
+      if (!held && performance.now() > holdUntil) select(current + 1);
       figure.classList.remove("is-kick");
       void figure.offsetWidth;
       figure.classList.add("is-kick");
@@ -279,7 +285,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       groups = ordered.map(cluster);
       marks.replaceChildren(...groups);
       marks.style.setProperty("--total", String(strokeIndex));
-      // The figure is the strokes actually drawn, so the caption stays true.
       figure.setAttribute("data-drawn", "");
       // Start on the newest group once the strokes have landed.
       setTimeout(() => {
@@ -529,16 +534,6 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     to { opacity: 1; transform: none; }
   }
 
-  .caption {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 8px 24px;
-    margin-top: 14px;
-  }
-  .total { font-size: 15px; }
-  .total strong { font-weight: 700; font-variant-numeric: tabular-nums; }
 
   /* ---------- Base: pitch + figures ---------- */
   .base {
