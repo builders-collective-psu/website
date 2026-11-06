@@ -229,6 +229,18 @@ const cards = team.map((m) => ({
   .co-name { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; line-height: 1; }
   .co--word .co-name { font-size: 19px; }
   .co:hover img, .co:focus-visible img { opacity: 1; }
+  /* Rhythm: a hop travels across the logos on the beat (GameFX), and every
+     third one bobs gently on its own phase. */
+  .logos li { display: inline-flex; }
+  .logos li:nth-child(3n + 1) .co { animation: co-bob 3.2s ease-in-out infinite; }
+  .logos li:nth-child(6n + 4) .co { animation-delay: -1.6s; }
+  @keyframes co-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .logos li .co { animation: none; }
+  }
   .co:hover .co-name { color: var(--accent); }
   :global([data-theme="dark"]) .co img { filter: brightness(0) invert(1); }
   @media (prefers-color-scheme: dark) {

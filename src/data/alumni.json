@@ -1,14 +1,63 @@
 {
-  "heading": "Collective members have gone on to:",
+  "heading": "We're forever grateful for former collective members who have gone on to places like:",
   "note": "Full-time roles only, biggest company first. Source of truth is each member's company affiliations on bunker; this list mirrors them for the static build.",
   "companies": [
-    { "name": "AGI, Inc.", "linkedin": "https://www.linkedin.com/company/the-agi-company", "website": "https://www.theagi.company/", "logo": "/logos/alumni/agi.png", "mark": true },
-    { "name": "Bloomerang", "linkedin": "https://www.linkedin.com/company/bloomerang", "website": "https://bloomerang.com/", "logo": "/logos/alumni/bloomerang.svg" },
-    { "name": "interface.ai", "linkedin": "https://www.linkedin.com/company/interface-ai", "website": "https://www.interface.ai/", "logo": "/logos/alumni/interfaceai.svg" },
-    { "name": "super{set}", "linkedin": "https://www.linkedin.com/company/superset-studio", "website": "https://www.superset.com/", "logo": null },
-    { "name": "Cara", "linkedin": "https://www.linkedin.com/company/caraai", "website": "https://www.getcara.ai/", "logo": "/logos/alumni/cara.png", "mark": true },
-    { "name": "Raya Health", "linkedin": "https://www.linkedin.com/company/find-raya-health", "website": "https://www.findraya.com/", "logo": "/logos/alumni/raya-health.svg" },
-    { "name": "ColdStart", "linkedin": "https://www.linkedin.com/company/coldstartpower", "website": "https://www.coldstart.co/", "logo": "/logos/alumni/coldstart.png" },
-    { "name": "HandsForHearts", "linkedin": "https://www.linkedin.com/company/handsforhearts", "website": "https://handsforhearts.health/", "logo": null }
+    {
+      "name": "Vercel",
+      "linkedin": "https://www.linkedin.com/company/vercel",
+      "website": "https://vercel.com/",
+      "logo": "/logos/alumni/vercel.svg",
+      "mark": true
+    },
+    {
+      "name": "AGI, Inc.",
+      "linkedin": "https://www.linkedin.com/company/the-agi-company",
+      "website": "https://www.theagi.company/",
+      "logo": "/logos/alumni/agi.png",
+      "mark": true
+    },
+    {
+      "name": "Bloomerang",
+      "linkedin": "https://www.linkedin.com/company/bloomerang",
+      "website": "https://bloomerang.com/",
+      "logo": "/logos/alumni/bloomerang.svg"
+    },
+    {
+      "name": "interface.ai",
+      "linkedin": "https://www.linkedin.com/company/interface-ai",
+      "website": "https://www.interface.ai/",
+      "logo": "/logos/alumni/interfaceai.svg"
+    },
+    {
+      "name": "super{set}",
+      "linkedin": "https://www.linkedin.com/company/superset-studio",
+      "website": "https://www.superset.com/",
+      "logo": null
+    },
+    {
+      "name": "Cara",
+      "linkedin": "https://www.linkedin.com/company/caraai",
+      "website": "https://www.getcara.ai/",
+      "logo": "/logos/alumni/cara.png",
+      "mark": true
+    },
+    {
+      "name": "Raya Health",
+      "linkedin": "https://www.linkedin.com/company/find-raya-health",
+      "website": "https://www.findraya.com/",
+      "logo": "/logos/alumni/raya-health.svg"
+    },
+    {
+      "name": "ColdStart",
+      "linkedin": "https://www.linkedin.com/company/coldstartpower",
+      "website": "https://www.coldstart.co/",
+      "logo": "/logos/alumni/coldstart.png"
+    },
+    {
+      "name": "HandsForHearts",
+      "linkedin": "https://www.linkedin.com/company/handsforhearts",
+      "website": "https://handsforhearts.health/",
+      "logo": null
+    }
   ]
 }
