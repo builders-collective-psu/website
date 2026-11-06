@@ -55,7 +55,15 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
 
     <div class="base">
       <div class="pitch">
-        <p>Penn State engineers and designers who build for hackathons.</p>
+        <p>
+          Penn State engineers and designers who build for <span class="term">hackathons<button
+              type="button"
+              class="hint"
+              aria-label="What is a hackathon?"
+              aria-describedby="hint-hackathon"
+              data-hint
+            >?</button><span class="tip font-mono" id="hint-hackathon" role="tooltip">A hackathon is a short sprint, usually a weekend, where small teams build a working project from scratch and demo it to judges for prizes.</span></span>.
+        </p>
         <div class="ctas">
           <Button href="#apply" arrow="external">Apply to Build</Button>
           <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
@@ -205,6 +213,17 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
       });
       return wrap;
     }
+
+    // "?" hint: hover or focus shows it (CSS); a tap toggles it for touch.
+    document.querySelectorAll("[data-hint]").forEach((hint) => {
+      const term = hint.closest(".term");
+      hint.addEventListener("click", (e) => {
+        e.stopPropagation();
+        term.classList.toggle("is-open");
+      });
+      document.addEventListener("click", () => term.classList.remove("is-open"));
+      document.addEventListener("keydown", (e) => e.key === "Escape" && term.classList.remove("is-open"));
+    });
 
     // ---------- Selection: a game-menu reticle that hops between groups ----------
     let groups = [];
@@ -721,6 +740,79 @@ const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.
     letter-spacing: -0.01em;
   }
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+
+  /* "?" hint after "hackathons", with a game-style popover above it. */
+  .term { position: relative; white-space: nowrap; }
+  .hint {
+    position: relative;
+    top: -0.65em;
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 3px;
+    padding: 0;
+    font: 700 10px/1 var(--font-mono);
+    color: var(--paper);
+    background: var(--muted);
+    border: 0;
+    border-radius: 999px;
+    cursor: help;
+    vertical-align: baseline;
+    transition: background var(--dur-fast) ease, transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .hint:hover,
+  .hint:focus-visible,
+  .term:global(.is-open) .hint { background: var(--accent); transform: scale(1.15); }
+  .tip {
+    position: absolute;
+    left: 100%;
+    bottom: calc(100% + 14px);
+    z-index: 5;
+    width: max-content;
+    max-width: 260px;
+    padding: 10px 12px;
+    font-size: 11px;
+    line-height: 1.45;
+    letter-spacing: 0.02em;
+    white-space: normal;
+    color: var(--paper);
+    background: var(--ink);
+    border: 2px solid var(--accent);
+    box-shadow: 4px 4px 0 var(--accent);
+    transform: translate(-50%, 6px) scale(0.92);
+    transform-origin: 50% 100%;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 160ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s linear 220ms;
+  }
+  /* The pointer: an accent triangle with the ink one inset on top. */
+  .tip::before,
+  .tip::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 9px solid transparent;
+    border-top-color: var(--accent);
+  }
+  .tip::after { border-width: 6px; border-top-color: var(--ink); }
+  .hint:hover + .tip,
+  .hint:focus-visible + .tip,
+  .term:global(.is-open) .tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0) scale(1);
+    transition: opacity 160ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s;
+  }
+  @media (max-width: 640px) {
+    .tip { left: auto; right: -8px; transform: translate(0, 6px) scale(0.92); transform-origin: 90% 100%; }
+    .hint:hover + .tip, .hint:focus-visible + .tip, .term:global(.is-open) .tip { transform: none; }
+    .tip::before, .tip::after { left: auto; right: 10px; transform: none; }
+    .tip::after { right: 13px; }
+  }
 
   .figures {
     display: grid;
