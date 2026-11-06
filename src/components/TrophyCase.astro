@@ -40,6 +40,19 @@ const meta = REAL_DATA
     {
       REAL_DATA ? (
         <div class="show" data-show>
+          {/* Flame distortion for the top multiplier: animated turbulence
+              displacing the glyphs, like a heat shimmer. */}
+          <svg class="fx-defs" width="0" height="0" aria-hidden="true" focusable="false">
+            <filter id="bc-fire" x="-20%" y="-40%" width="140%" height="180%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02 0.09" numOctaves="2" seed="3" result="noise">
+                <animate attributeName="baseFrequency" dur="1.8s" values="0.02 0.09;0.025 0.14;0.02 0.09" repeatCount="indefinite" />
+              </feTurbulence>
+              <feOffset in="noise" dy="0" result="rising">
+                <animate attributeName="dy" dur="0.9s" values="0;-12" repeatCount="indefinite" />
+              </feOffset>
+              <feDisplacementMap in="SourceGraphic" in2="rising" scale="5" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </svg>
           <div class="left">
             <ol class="events" data-events aria-label="Events we won at" />
           </div>
@@ -158,7 +171,10 @@ const meta = REAL_DATA
     // Event cards, in the original format: name, dates, every winning team by
     // its members with what they won, and the N× multiplier.
     const tier = (n) => (n >= 6 ? 5 : n >= 4 ? 4 : n);
+    // The largest multiplier (or all of them, if tied) gets the fire effect.
+    let topCount = 0;
     function renderEvents() {
+      topCount = Math.max(...events.map((e) => e.projects.reduce((t, p) => t + Math.max(1, p.members.length), 0)));
       list.replaceChildren(
         ...events.map((event, i) => {
           const item = el("li", "ev");
@@ -180,7 +196,7 @@ const meta = REAL_DATA
           body.appendChild(teams);
           card.appendChild(body);
           const count = event.projects.reduce((t, p) => t + Math.max(1, p.members.length), 0);
-          const mult = el("div", `t-mult t-mult--${tier(count)} font-mono`, `${count}×`);
+          const mult = el("div", `t-mult t-mult--${tier(count)} font-mono${count === topCount ? " t-mult--fire" : ""}`, `${count}×`);
           mult.setAttribute("aria-label", `${count} ${count === 1 ? "win" : "wins"}`);
           card.appendChild(mult);
           const pick = () => {
@@ -637,6 +653,35 @@ const meta = REAL_DATA
     50% { transform: scale(1.12); }
   }
 
+  /* Fire on the top multiplier: a rising flame gradient clipped to the text,
+     a flickering glow, and the turbulence filter for the shimmer. */
+  .fx-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .events :global(.t-mult--fire) {
+    color: transparent;
+    background-image: linear-gradient(0deg, #b3130b 0%, #ff3d00 22%, #ff8a00 45%, #ffd23f 68%, #fff6c4 85%, #ff8a00 100%);
+    background-size: 100% 220%;
+    background-position: 50% 0%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: none;
+    filter: url(#bc-fire) drop-shadow(0 0 6px rgba(255, 120, 0, 0.55)) drop-shadow(0 -2px 12px rgba(255, 60, 0, 0.35));
+    animation:
+      t-zoom 4s ease-in-out infinite,
+      fire-rise 1.1s linear infinite,
+      fire-flicker 2.3s steps(1) infinite;
+  }
+  @keyframes fire-rise {
+    from { background-position: 50% 0%; }
+    to { background-position: 50% 100%; }
+  }
+  @keyframes fire-flicker {
+    0%, 100% { opacity: 1; }
+    23% { opacity: 0.88; }
+    41% { opacity: 1; }
+    67% { opacity: 0.93; }
+    79% { opacity: 1; }
+  }
+
   /* Project card */
   .post-slot :global(.post) {
     border: 1.5px solid var(--ink);
@@ -859,5 +904,6 @@ const meta = REAL_DATA
     .larp-slot { scroll-behavior: auto; }
     .larp-slot :global(.larp.pop) { animation: none; }
     .show :global(.spring), .events :global(.t-mult), .bar :global(.seg.is-beat) { animation: none; }
+    .events :global(.t-mult--fire) { filter: drop-shadow(0 0 6px rgba(255, 120, 0, 0.5)); background-position: 50% 40%; }
   }
 </style>
