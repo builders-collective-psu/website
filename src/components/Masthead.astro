@@ -19,6 +19,9 @@ interface Props {
 }
 
 const { site } = Astro.props;
+// Section links (#team) point at the homepage when on another page (/blog).
+const onHome = Astro.url.pathname === "/";
+const hrefFor = (href: string) => (href.startsWith("#") && !onHome ? `/${href}` : href);
 ---
 
 <header class="masthead" aria-label="Site header">
@@ -30,7 +33,7 @@ const { site } = Astro.props;
     </a>
 
     <nav class="nav font-mono upper" aria-label="Main navigation">
-      {site.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+      {site.nav.map((item) => <a href={hrefFor(item.href)}>{item.label}</a>)}
     </nav>
 
     <div class="actions">
@@ -62,6 +65,17 @@ const { site } = Astro.props;
           </svg>
         </a>
       )}
+      <button type="button" class="icon sfx" data-sfx-toggle aria-pressed="true" aria-label="Sound effects" title="Sound on">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor" stroke="none" />
+          <path class="wave" d="M11 5.5c.9.7 1.4 1.6 1.4 2.5s-.5 1.8-1.4 2.5M12.8 3.6C14.2 4.8 15 6.3 15 8s-.8 3.2-2.2 4.4" />
+          <path class="mute" d="M11 5.5l4 5M15 5.5l-4 5" />
+        </svg>
+      </button>
+      <label class="vol" title="Volume">
+        <span class="sr-only">Sound volume</span>
+        <input type="range" min="0" max="5" step="1" value="3" data-sfx-volume />
+      </label>
       <span class="theme"><ThemeToggle /></span>
       <span class="divider" aria-hidden="true"></span>
       <a class="sign-in font-mono upper" href={site.signInUrl}>Sign in</a>
@@ -169,6 +183,39 @@ const { site } = Astro.props;
   }
   .theme { display: contents; }
 
+  .sfx { cursor: pointer; padding: 0; }
+  /* No sound on mobile (see GameFX), so no sound controls either. */
+  :global(.no-sound) .sfx,
+  :global(.no-sound) .vol { display: none; }
+  .sfx .mute { display: none; }
+  .sfx[aria-pressed="false"] .wave { display: none; }
+  .sfx[aria-pressed="false"] .mute { display: inline; }
+  .sfx[aria-pressed="false"] { color: var(--muted); }
+
+  /* Volume: six notched steps, drawn as ticks behind the thumb. */
+  .vol { display: inline-flex; align-items: center; padding: 0 6px; }
+  .vol input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 64px;
+    height: 14px;
+    margin: 0;
+    background:
+      repeating-linear-gradient(90deg, var(--ink) 0 1.5px, transparent 1.5px calc((100% - 1.5px) / 5)) center / 100% 8px no-repeat,
+      linear-gradient(var(--hairline), var(--hairline)) center / 100% 1px no-repeat;
+    cursor: pointer;
+  }
+  .vol input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 14px;
+    background: var(--accent);
+    border: 0;
+  }
+  .vol input::-moz-range-thumb { width: 10px; height: 14px; background: var(--accent); border: 0; border-radius: 0; }
+  .vol input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .sfx[aria-pressed="false"] ~ .vol { opacity: 0.4; }
+
   .divider {
     width: 1px;
     height: 18px;
@@ -193,6 +240,7 @@ const { site } = Astro.props;
   }
 
   .masthead a:focus-visible,
+  .sfx:focus-visible,
   .theme :global(.icon-btn:focus-visible) {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -224,6 +272,7 @@ const { site } = Astro.props;
   }
 
   @media (max-width: 520px) {
+    .vol { display: none; }
     .est { display: none; }
     .icon { display: none; }
     .divider { margin: 0 8px 0 4px; }

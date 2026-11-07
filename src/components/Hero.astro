@@ -1,7 +1,8 @@
 ---
 import Button from "./ui/Button.astro";
-import StatBlock from "./ui/StatBlock.astro";
 import { REAL_DATA } from "@lib/flags";
+import trophies from "@data/trophies.json";
+import Globe from "./Globe.astro";
 
 interface StatsData {
   wins: number;
@@ -12,128 +13,879 @@ interface StatsData {
 
 interface Props {
   stats: StatsData;
-  location?: string;
+  endpoint?: string;
 }
 
-const { stats, location = "UNIVERSITY PARK, PA" } = Astro.props;
+const { stats, endpoint = "/api/recaps" } = Astro.props;
 
 const pad = (n: number) => n.toString().padStart(2, "0");
+
+const figures = [
+  { key: "wins", label: "Wins", value: stats.wins },
+  { key: "hackathons", label: "Hackathons", value: stats.hackathons },
+  { key: "shipped", label: "Shipped", value: stats.shipped },
+  { key: "members", label: "Members", value: stats.members },
+];
+
+// Without live data the tally draws from the checked-in mock trophies.
+const mockEvents = trophies.map((t) => ({ event: t.event, start: t.date, end: t.date, count: 1 }));
 ---
 
-<section class="hero" aria-labelledby="hero-heading">
-  <div class="wrap">
-    <p class="hero-eyebrow font-mono upper">PENN STATE UNIVERSITY · {location}</p>
-
-    <h1 id="hero-heading" class="display hero-title upper">
-      WE SHIP<br />
-      <span class="amp">while</span> YOU<br />
-      SLEEP.
+<section class="hero" aria-labelledby="hero-heading" data-hero>
+  <div class="wrap top">
+    <Globe />
+    <h1 id="hero-heading" class="headline display">
+      <span class="slam slam--left">We ship <em>while</em></span>
+      <span class="slam slam--right">you sleep<span class="stop"><span class="stop-dot">.</span><span class="zzz" aria-hidden="true" data-zzz></span><span class="ghost" aria-hidden="true" data-ghost><svg viewBox="0 0 16 22"><path d="M1 1v17l4.5-4.2 3 6.7 3-1.4-3-6.6H15z" /></svg><i class="ghost-ring"></i></span></span></span>
     </h1>
 
-    <div class="hero-sub">
-      <p class="manifesto">
-        An elite team of Penn State engineers and designers who build for
-        hackathons.
+    <figure class="tally" data-tally aria-label="Wins, one stroke per person per win, grouped by event">
+      <div class="stagebox">
+        <div class="marks" data-tally-marks role="group" aria-label="Events, one cluster of strokes each"></div>
+        <div class="reticle" data-reticle aria-hidden="true">
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+        </div>
+      </div>
+      <p class="now" data-tally-now aria-live="off">
+        <span class="now-name" data-now-name></span>
+        <span class="now-meta font-mono upper" data-now-meta></span>
       </p>
-      <StatBlock label="HACKATHON WINS" value={pad(stats.wins)} field={REAL_DATA ? "wins" : undefined} />
-      <StatBlock
-        label="HACKATHONS"
-        value={pad(stats.hackathons)}
-        field={REAL_DATA ? "hackathons" : undefined}
-      />
-      <StatBlock label="SHIPPED" value={pad(stats.shipped)} field={REAL_DATA ? "shipped" : undefined} />
-      <StatBlock label="MEMBERS" value={pad(stats.members)} field={REAL_DATA ? "members" : undefined} />
-    </div>
+    </figure>
 
-    <div class="ctas">
-      <Button href="#apply" arrow="external">Apply to Build</Button>
-      <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
-      <button class="event-link font-mono upper" type="button" data-event-open>
-        c0mpiled-15 recap ↗
+    <div class="base">
+      <div class="pitch">
+        <p>
+          Penn State engineers and designers who build for <span class="term">hackathons<button
+              type="button"
+              class="hint"
+              aria-label="What is a hackathon?"
+              aria-describedby="hint-hackathon"
+              data-hint
+            >?</button><span class="tip font-mono" id="hint-hackathon" role="tooltip">A hackathon is a short, usually weekend, sprint where teams build a working project from scratch and demo to judges for prizes.</span></span>.
+        </p>
+        <div class="ctas">
+          <Button href="#apply" arrow="external">Apply to Build</Button>
+          <Button href="#sponsor" variant="ghost" arrow="inline">Sponsor Us</Button>
+        </div>
+      </div>
+
+      <div class="stats">
+      <dl class="figures">
+        {
+          figures.map((f) => (
+            <div class="figure">
+              <dt class="font-mono upper">{f.label}</dt>
+              <dd data-stat={REAL_DATA ? f.key : undefined} data-stat-format="pad">
+                {pad(f.value)}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+      {/* Jazz on/off button, hidden for now. The soundtrack follows the speaker
+          button in the masthead. To bring it back, uncomment this block.
+      <button type="button" class="boombox font-mono upper" data-boombox aria-pressed="true" title="Jazz soundtrack">
+        <svg viewBox="0 0 32 20" aria-hidden="true" focusable="false">
+          <rect x="1" y="5" width="30" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <path d="M8 5V2.5h16V5" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <circle class="spk" cx="8.5" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <circle class="spk" cx="23.5" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <rect x="14" y="9" width="4" height="2" fill="currentColor" />
+        </svg>
+        <span data-boombox-label>Jazz on</span>
       </button>
+      */}
+      </div>
     </div>
   </div>
 </section>
 
+<script is:inline define:vars={{ endpoint, live: REAL_DATA, mockEvents }}>
+  (function () {
+    const figure = document.querySelector("[data-tally]");
+    const marks = document.querySelector("[data-tally-marks]");
+    const reticle = document.querySelector("[data-reticle]");
+    const nowName = document.querySelector("[data-now-name]");
+    const nowMeta = document.querySelector("[data-now-meta]");
+    const nowBox = document.querySelector("[data-tally-now]");
+    const main = document.getElementById("main");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!figure || !marks) return;
+
+    if (!reduced) {
+      [471, 891].forEach((t) => setTimeout(() => window.__sfx && window.__sfx.clash && window.__sfx.clash(), t));
+    }
+
+    const SVG = "http://www.w3.org/2000/svg";
+    const H = 64; // stroke height
+    const STEP = 11; // gap between strokes
+
+    // Deterministic wobble so the strokes look hand-drawn but never shift
+    // between visits.
+    let seed = 7;
+    const rand = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    const wob = (n) => (rand() - 0.5) * 2 * n;
+
+    const decoder = document.createElement("textarea");
+    const plain = (text) => {
+      decoder.innerHTML = text == null ? "" : String(text);
+      return decoder.value;
+    };
+
+    const fmtDates = (start, end) => {
+      if (!start) return "";
+      const parts = (iso) => {
+        const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+        return { y, d, mon: new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }) };
+      };
+      const a = parts(start);
+      const b = parts(end || start);
+      if (a.y !== b.y) return `${a.mon} ${a.d}, ${a.y} – ${b.mon} ${b.d}, ${b.y}`;
+      if (a.mon !== b.mon) return `${a.mon} ${a.d} – ${b.mon} ${b.d}, ${a.y}`;
+      if (a.d !== b.d) return `${a.mon} ${a.d}–${b.d}, ${a.y}`;
+      return `${a.mon} ${a.d}, ${a.y}`;
+    };
+
+    const line = (svg, x1, y1, x2, y2, index) => {
+      const l = document.createElementNS(SVG, "line");
+      l.setAttribute("x1", x1.toFixed(1));
+      l.setAttribute("y1", y1.toFixed(1));
+      l.setAttribute("x2", x2.toFixed(1));
+      l.setAttribute("y2", y2.toFixed(1));
+      l.style.setProperty("--i", String(index));
+      svg.appendChild(l);
+    };
+
+    // One cluster per event: gates of five (four upright, one across), then
+    // the remainder as uprights.
+    let strokeIndex = 0;
+    function cluster(event) {
+      const gates = Math.floor(event.count / 5);
+      const rest = event.count % 5;
+      const width = gates * (4 * STEP + 10) + rest * STEP + 6;
+      const svg = document.createElementNS(SVG, "svg");
+      svg.setAttribute("viewBox", `0 0 ${width} ${H + 8}`);
+      svg.setAttribute("width", String(width));
+      svg.setAttribute("height", String(H + 8));
+      svg.setAttribute("class", "cluster");
+
+      let x = 5;
+      for (let g = 0; g < gates; g++) {
+        const x0 = x;
+        for (let k = 0; k < 4; k++) {
+          line(svg, x + wob(1.2), 6 + wob(3), x + wob(1.6), H + wob(3), strokeIndex++);
+          x += STEP;
+        }
+        line(svg, x0 - 6 + wob(2), H - 10 + wob(4), x - STEP + 6 + wob(2), 14 + wob(4), strokeIndex++);
+        x += 10;
+      }
+      for (let k = 0; k < rest; k++) {
+        line(svg, x + wob(1.2), 6 + wob(3), x + wob(1.6), H + wob(3), strokeIndex++);
+        x += STEP;
+      }
+
+      const wrap = document.createElement("span");
+      wrap.className = "group";
+      wrap.setAttribute("data-sfx", "");
+      wrap.appendChild(svg);
+      wrap._event = event;
+      // Reachable by keyboard too: focusing a cluster selects and holds it.
+      wrap.tabIndex = 0;
+      wrap.setAttribute("role", "button");
+      wrap.setAttribute("aria-label", `${event.event}, ${event.count} ${event.count === 1 ? "win" : "wins"}`);
+      wrap.addEventListener("focus", () => {
+        held = true;
+        select(groups.indexOf(wrap));
+      });
+      wrap.addEventListener("blur", () => {
+        held = false;
+      });
+      // Click (or Enter/Space): jump down to this event in Built & Won.
+      const openInBuilds = () => window.dispatchEvent(new CustomEvent("builds:show", { detail: event.event }));
+      wrap.addEventListener("click", openInBuilds);
+      wrap.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openInBuilds();
+        }
+      });
+      wrap.addEventListener("pointerenter", () => {
+        held = true;
+        select(groups.indexOf(wrap));
+      });
+      wrap.addEventListener("pointerleave", () => {
+        held = false;
+      });
+      return wrap;
+    }
+
+    // "?" hint: hover or focus shows it (CSS); a tap toggles it for touch.
+    document.querySelectorAll("[data-hint]").forEach((hint) => {
+      const term = hint.closest(".term");
+      hint.addEventListener("click", (e) => {
+        e.stopPropagation();
+        term.classList.toggle("is-open");
+      });
+      document.addEventListener("click", () => term.classList.remove("is-open"));
+      document.addEventListener("keydown", (e) => e.key === "Escape" && term.classList.remove("is-open"));
+    });
+
+    // ---------- Selection: a game-menu reticle that hops between groups ----------
+    let groups = [];
+    let current = -1;
+    let held = false;
+    let holdUntil = 0;
+
+    // A tap on the globe picks an event by name; hold it for a few beats.
+    window.addEventListener("tally:pick", (e) => {
+      const name = e.detail;
+      const index = groups.findIndex((g) => g._event.event === name);
+      if (index < 0) return;
+      holdUntil = performance.now() + 4 * (window.__beatPeriod || 640);
+      select(index);
+      window.__sfx && window.__sfx.select();
+    });
+
+    function place(wrap) {
+      if (!reticle || !wrap) return;
+      const box = marks.getBoundingClientRect();
+      const r = wrap.getBoundingClientRect();
+      const padX = 10;
+      const padY = 8;
+      reticle.style.width = `${r.width + padX * 2}px`;
+      reticle.style.height = `${r.height + padY * 2}px`;
+      reticle.style.transform = `translate(${r.left - box.left - padX}px, ${r.top - box.top - padY}px)`;
+    }
+
+    function select(index) {
+      if (!groups.length || index < 0) return;
+      current = index % groups.length;
+      const wrap = groups[current];
+      const event = wrap._event;
+      groups.forEach((g) => g.classList.toggle("is-on", g === wrap));
+      marks.classList.add("is-focused");
+      place(wrap);
+      reticle && reticle.classList.add("is-live");
+      if (nowName) nowName.textContent = event.event;
+      window.__tallySelected = event;
+      window.dispatchEvent(new CustomEvent("tally:select", { detail: event }));
+      if (nowMeta) {
+        nowMeta.textContent = [
+          `${event.count} ${event.count === 1 ? "win" : "wins"}${event.people ? ` / ${event.people} went` : ""}`,
+          event.start ? fmtDates(event.start, event.end) : "",
+        ]
+          .filter(Boolean)
+          .join("  ·  ");
+      }
+      // Re-trigger the pop on the label each hop.
+      if (nowBox) {
+        nowBox.classList.remove("is-pop");
+        void nowBox.offsetWidth;
+        nowBox.classList.add("is-pop");
+      }
+    }
+
+    window.addEventListener("resize", () => groups[current] && place(groups[current]));
+
+    // ---------- The beat: hop each beat, shake the page on the bar ----------
+    // Driven by the page-wide beat clock in GameFX ("fx:beat").
+    let inView = false;
+    let started = false;
+
+    // The full stop snores in time. It pulses once per bar; while the page is
+    // "asleep" (sound not started yet, muted, or at zero volume) it also puffs
+    // out a steady stream of Zs, one per beat. Once sound is on, no Zs.
+    const stopDot = document.querySelector(".stop-dot");
+    const zzz = document.querySelector("[data-zzz]");
+    const ghost = document.querySelector("[data-ghost]");
+    let snores = 0;
+    window.addEventListener("fx:beat", (event) => {
+      if (reduced || !stopDot || !zzz) return;
+      // Sound is waiting on a first click: before every other pulse (starting
+      // with the first), a little cursor fades in and "clicks" the full stop
+      // as a hint. It starts two beats early so the click lands on the pulse.
+      if (
+        event.detail.n % 8 === 2 &&
+        ghost &&
+        window.__soundAvailable !== false &&
+        window.__soundUnlocked &&
+        !window.__soundUnlocked()
+      ) {
+        ghost.classList.remove("is-clicking");
+        void ghost.offsetWidth;
+        ghost.classList.add("is-clicking");
+      }
+      // Pulses start on the second downbeat (n = 4), so even the first one
+      // has a lead-in for the cursor.
+      if (event.detail.down && event.detail.n >= 4) {
+        stopDot.classList.remove("is-pulse");
+        void stopDot.offsetWidth;
+        stopDot.classList.add("is-pulse");
+      }
+      const asleep = !(window.__soundAwake && window.__soundAwake());
+      if (!asleep) return;
+      const z = document.createElement("i");
+      const size = snores++ % 3;
+      z.textContent = size === 2 ? "Z" : "z";
+      z.style.setProperty("--zs", ["0.24em", "0.3em", "0.38em"][size]);
+      z.addEventListener("animationend", () => z.remove());
+      zzz.appendChild(z);
+    });
+
+    window.addEventListener("fx:beat", (event) => {
+      if (!started || !inView || reduced || !groups.length) return;
+      const { down } = event.detail;
+      if (!held && performance.now() > holdUntil) select(current + 1);
+      figure.classList.remove("is-kick");
+      void figure.offsetWidth;
+      figure.classList.add("is-kick");
+      // With the soundtrack off, mark the beat with a tick instead.
+      if (!(window.__music && window.__music.on)) window.__sfx && window.__sfx.beat(down);
+      if (down && main) {
+        main.classList.remove("is-jolt");
+        void main.offsetWidth;
+        main.classList.add("is-jolt");
+      }
+    });
+
+    new IntersectionObserver((entries) => {
+      inView = entries.some((e) => e.isIntersecting);
+    }, { threshold: 0.35 }).observe(figure);
+
+    // Boombox: the jazz soundtrack, on by default whenever sound is on.
+    const boombox = document.querySelector("[data-boombox]");
+    const boomLabel = document.querySelector("[data-boombox-label]");
+    const paintBoombox = () => {
+      if (!boombox || !window.__music) return;
+      const on = window.__music.on;
+      boombox.setAttribute("aria-pressed", String(on));
+      if (boomLabel) boomLabel.textContent = on ? "Jazz on" : "Jazz off";
+    };
+    boombox && boombox.addEventListener("click", () => {
+      window.__music && window.__music.toggle();
+      paintBoombox();
+    });
+    window.addEventListener("fx:music", paintBoombox);
+    paintBoombox();
+
+    function draw(events) {
+      seed = 7;
+      strokeIndex = 0;
+      // Oldest first: the tally reads like it was kept, left to right.
+      const ordered = events.slice().sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
+      groups = [];
+      groups = ordered.map(cluster);
+      marks.replaceChildren(...groups);
+      marks.style.setProperty("--total", String(strokeIndex));
+      figure.setAttribute("data-drawn", "");
+      // Start on the newest group once the strokes have landed.
+      setTimeout(() => {
+        select(groups.length - 1);
+        started = true;
+      }, reduced ? 0 : Math.min(1800, strokeIndex * 14 + 300));
+    }
+
+    if (!live) {
+      draw(mockEvents);
+      return;
+    }
+
+    window.__recaps =
+      window.__recaps ||
+      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
+        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
+        return response.json();
+      });
+
+    window.__recaps
+      .then((data) => {
+        // Outings: every event we went to, with who went and how many won.
+        if (Array.isArray(data.outings)) {
+          const outings = data.outings;
+          const won = outings
+            .filter((o) => o.wins > 0)
+            .map((o) => ({
+              event: o.event,
+              start: o.start,
+              end: o.end,
+              count: o.wins,
+              people: o.people,
+              lat: o.lat,
+              lon: o.lon,
+            }));
+          // Every outing goes on the globe; won ones are marked.
+          window.__tallyOutings = outings;
+          window.dispatchEvent(new CustomEvent("tally:outings", { detail: outings }));
+          if (!won.length) throw new Error("no wins");
+          draw(won);
+          return;
+        }
+
+        // Older API without outings: rebuild the clusters from the wins list.
+        const groups = new Map();
+        (Array.isArray(data.wins) ? data.wins : []).forEach((win) => {
+          const name = plain(win.event);
+          const key = name.toLowerCase().replace(/\s+/g, " ").trim();
+          if (!groups.has(key)) groups.set(key, { event: name, start: null, end: null, count: 0 });
+          const group = groups.get(key);
+          group.count += Math.max(1, (win.people || []).length);
+          if (!group.start && win.eventStart) {
+            group.start = win.eventStart;
+            group.end = win.eventEnd || null;
+          }
+        });
+        if (!groups.size) throw new Error("no wins");
+        draw([...groups.values()]);
+      })
+      .catch(() => {
+        figure.hidden = true;
+      });
+  })();
+</script>
+
 <style>
   .hero {
-    padding: 56px 0 48px;
-    border-bottom: 2px solid var(--ink);
-    position: relative;
+    overflow-x: clip;
+    border-bottom: var(--rule-major) solid var(--ink);
+    padding-block: 44px 40px;
   }
 
-  .hero-eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.16em;
-    margin: 0 0 28px;
-    color: var(--muted);
+  .top { position: relative; }
+
+  /* ---------- Headline: each line slams in from opposite sides ---------- */
+  .slam { display: block; width: max-content; max-width: 100%; }
+  .slam--left { animation: slam-left 760ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .slam--right { animation: slam-right 760ms 420ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  @keyframes slam-left {
+    0% { transform: translateX(-110vw); }
+    62% { transform: translateX(0); }
+    70% { transform: translateX(18px) scaleX(0.94); }
+    80% { transform: translateX(-8px) scaleX(1.02); }
+    90% { transform: translateX(3px); }
+    100% { transform: none; }
+  }
+  @keyframes slam-right {
+    0% { transform: translateX(110vw); }
+    62% { transform: translateX(0); }
+    70% { transform: translateX(-18px) scaleX(0.94); }
+    80% { transform: translateX(8px) scaleX(1.02); }
+    90% { transform: translateX(-3px); }
+    100% { transform: none; }
+  }
+  /* The clash: the whole hero takes the hit as each line lands. */
+  .hero { animation: clash 220ms 471ms steps(4) 1, clash 220ms 891ms steps(4) 1; }
+  @keyframes clash {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(-5px, 3px); }
+    50% { transform: translate(4px, -3px); }
+    75% { transform: translate(-2px, 2px); }
+    100% { transform: none; }
   }
 
-  .hero-title {
-    font-size: clamp(80px, 14vw, 220px);
-    font-weight: 700;
+  .headline {
     margin: 0;
-    line-height: 0.88;
+    font-size: clamp(56px, min(11.5vw, 17svh), 220px);
+    line-height: 0.9;
+    text-transform: uppercase;
   }
-  .hero-title .amp {
-    color: var(--accent);
+  /* The full stop snores: once per bar it pulses and puffs out a Z. */
+  .stop { position: relative; display: inline-block; }
+  .stop-dot { display: inline-block; transform-origin: 30% 85%; }
+  .stop-dot:global(.is-pulse) { animation: dot-pulse 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes dot-pulse {
+    0% { transform: none; }
+    30% { transform: scale(1.35); color: var(--accent); }
+    100% { transform: none; }
+  }
+  /* Anchored on the dot itself: low, near the baseline. */
+  .zzz {
+    position: absolute;
+    left: 0.22em;
+    bottom: 0.12em;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    text-transform: none;
+  }
+  .zzz :global(i) {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    font-family: var(--font-serif);
     font-style: italic;
+    font-weight: 400;
+    font-size: var(--zs, 0.3em);
+    line-height: 1;
+    color: var(--accent);
+    animation: snooze 3.4s ease-out forwards;
+  }
+  /* Hint cursor: drifts in, clicks the full stop just before it pulses, leaves. */
+  .ghost {
+    position: absolute;
+    left: 0.12em;
+    bottom: 0.02em;
+    width: 0.16em;
+    height: 0.22em;
+    min-width: 14px;
+    min-height: 19px;
+    opacity: 0;
+    pointer-events: none;
+    text-transform: none;
+  }
+  .ghost svg { width: 100%; height: 100%; display: block; fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+  .ghost-ring {
+    position: absolute;
+    left: -6px;
+    top: -6px;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--accent);
+    border-radius: 999px;
+    opacity: 0;
+  }
+  /* 2.6s: slow fade in, hold, click on the pulse (2 beats = 1.28s in), hold,
+     slow fade out. */
+  .ghost:global(.is-clicking) { animation: ghost-move 2600ms ease-in-out forwards; }
+  .ghost:global(.is-clicking) .ghost-ring { animation: ghost-ring 2600ms ease-out forwards; }
+  @keyframes ghost-move {
+    0% { opacity: 0; transform: translate(26px, 22px); }
+    32% { opacity: 1; transform: translate(0, 0); }
+    46% { transform: translate(0, 0) scale(1); }
+    49% { transform: translate(0, 0) scale(0.8); }
+    54% { transform: translate(0, 0) scale(1); }
+    70% { opacity: 1; transform: translate(0, 0); }
+    100% { opacity: 0; transform: translate(8px, 6px); }
+  }
+  @keyframes ghost-ring {
+    0%, 47% { opacity: 0; transform: scale(0.4); }
+    51% { opacity: 1; transform: scale(0.8); }
+    72% { opacity: 0; transform: scale(2.6); }
+    100% { opacity: 0; }
+  }
+
+  @keyframes snooze {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.3) rotate(-10deg); }
+    12% { opacity: 1; transform: translate(0.15em, -0.25em) scale(0.75) rotate(4deg); }
+    45% { transform: translate(0.7em, -1em) scale(1) rotate(-8deg); opacity: 1; }
+    100% { opacity: 0; transform: translate(1.5em, -2.1em) scale(1.25) rotate(12deg); }
+  }
+
+  .headline em {
     font-family: var(--font-serif);
     font-weight: 400;
-    letter-spacing: 0;
-  }
-
-  .hero-sub {
-    margin-top: 28px;
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
-    gap: 24px;
-    border-top: 1.5px solid var(--ink);
-    padding-top: 18px;
-  }
-
-  .manifesto {
-    font-size: 22px;
-    line-height: 1.18;
-    max-width: 36ch;
+    font-style: italic;
+    text-transform: lowercase;
     letter-spacing: -0.01em;
-    margin: 0;
-  }
-
-  .ctas {
-    display: flex;
-    gap: 12px;
-    margin-top: 28px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .event-link {
-    border: 0;
-    background: none;
-    padding: 0 0 2px;
-    margin-left: 4px;
     color: var(--accent);
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    border-bottom: 1px solid currentColor;
+  }
+
+  /* ---------- Tally ---------- */
+  .tally {
+    margin: 36px 0 0;
+    padding-top: 20px;
+    border-top: var(--rule-major) solid var(--ink);
+  }
+  .tally[hidden] { display: none; }
+
+  .stagebox { position: relative; }
+
+  .marks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 6px 22px;
+    min-height: 72px;
+  }
+
+  .marks :global(.group) { display: inline-flex; cursor: default; }
+  .marks :global(.cluster) { display: block; overflow: visible; }
+  .marks :global(.cluster line) {
+    stroke: var(--ink);
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke var(--dur-fast) ease, opacity var(--dur-fast) ease;
+  }
+
+  /* While one event is under the pointer, the rest step back. */
+  .marks:global(.is-focused) :global(.group:not(.is-on) line) { opacity: 0.22; }
+  .marks :global(.group.is-on line) { stroke: var(--accent); }
+  .marks :global(.group) { transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .tally:global(.is-kick) .marks :global(.group.is-on) { animation: kick 260ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes kick {
+    0% { transform: translateY(0) scale(1); }
+    35% { transform: translateY(-5px) scale(1.08); }
+    100% { transform: none; }
+  }
+
+  /* Game-menu reticle: four corner brackets that spring to the next pick. */
+  .reticle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      height 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 200ms ease;
+  }
+  .reticle:global(.is-live) { opacity: 1; }
+  .corner {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 3px solid var(--accent);
+    animation: breathe 1280ms ease-in-out infinite;
+  }
+  .tl { top: 0; left: 0; border-right: 0; border-bottom: 0; --dx: -3px; --dy: -3px; }
+  .tr { top: 0; right: 0; border-left: 0; border-bottom: 0; --dx: 3px; --dy: -3px; }
+  .bl { bottom: 0; left: 0; border-right: 0; border-top: 0; --dx: -3px; --dy: 3px; }
+  .br { bottom: 0; right: 0; border-left: 0; border-top: 0; --dx: 3px; --dy: 3px; }
+  @keyframes breathe {
+    0%, 100% { transform: none; }
+    50% { transform: translate(var(--dx), var(--dy)); }
+  }
+
+  /* Name of the selected event, centred under the tallies. */
+  .now {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    margin: 22px 0 0;
+    min-height: 64px;
+    text-align: center;
+  }
+  .now-name {
+    font-size: clamp(22px, 2.6vw, 34px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--accent);
+  }
+  .now-meta { font-size: 11px; letter-spacing: 0.14em; color: var(--muted); }
+  .now:global(.is-pop) .now-name { animation: pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes pop {
+    0% { transform: translateY(8px) scale(0.86); opacity: 0; }
+    100% { transform: none; opacity: 1; }
+  }
+
+  /* Page jolt on the downbeat. Applied to <main> so the sticky header and
+     the modal stay put. */
+  :global(#main.is-jolt) { animation: jolt 140ms steps(3) 1; }
+  @keyframes jolt {
+    0% { transform: translate(0, 0); }
+    33% { transform: translate(-2px, 1px); }
+    66% { transform: translate(2px, -1px); }
+    100% { transform: none; }
+  }
+
+  /* Floaty bits: gentle sine bob, each on its own phase. */
+  .headline em { display: inline-block; animation: bob 2.6s ease-in-out infinite; }
+  .figure dd { animation: bob 3.2s ease-in-out infinite; }
+  .figure:nth-child(2) dd { animation-delay: -0.8s; }
+  .figure:nth-child(3) dd { animation-delay: -1.6s; }
+  .figure:nth-child(4) dd { animation-delay: -2.4s; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Kept like a tally: each stroke lands in order, once. */
+  .tally[data-drawn] .marks :global(.cluster line) {
+    animation: stroke-in 220ms ease-out backwards;
+    animation-delay: calc(var(--i) * 14ms);
+  }
+  @keyframes stroke-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+
+  /* ---------- Base: pitch + figures ---------- */
+  /* Stats column: figures, with the boombox sitting above them on the right. */
+  .stats { display: flex; flex-direction: column; align-items: stretch; }
+  .stats .figures { order: 2; }
+  .boombox {
+    order: 1;
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--ink);
     cursor: pointer;
   }
-  .event-link:hover,
-  .event-link:focus-visible {
-    color: var(--ink);
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
+  .boombox svg { width: 28px; height: 18px; }
+  .boombox[aria-pressed="true"] .spk { animation: thump 640ms ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .boombox[aria-pressed="false"] { color: var(--muted); border-color: var(--hairline); }
+  @keyframes thump {
+    0% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  .base {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.8fr) 2fr;
+    gap: 40px;
+    align-items: end;
+    margin-top: 40px;
+  }
+  .pitch p {
+    margin: 0;
+    max-width: 30ch;
+    font-size: 20px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+
+  /* "?" hint after "hackathons", with a game-style popover above it. */
+  .term { position: relative; white-space: nowrap; }
+  .hint {
+    position: relative;
+    top: -0.65em;
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 3px;
+    padding: 0;
+    font: 700 10px/1 var(--font-mono);
+    color: var(--paper);
+    background: var(--muted);
+    border: 0;
+    border-radius: 999px;
+    cursor: help;
+    vertical-align: baseline;
+    transition: background var(--dur-fast) ease, transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .hint:hover,
+  .hint:focus-visible,
+  .term:global(.is-open) .hint { background: var(--accent); transform: scale(1.15); }
+  .tip {
+    position: absolute;
+    left: 100%;
+    bottom: calc(100% + 14px);
+    z-index: 5;
+    width: max-content;
+    max-width: 260px;
+    padding: 10px 12px;
+    font-size: 11px;
+    line-height: 1.45;
+    letter-spacing: 0.02em;
+    white-space: normal;
+    color: var(--paper);
+    background: var(--ink);
+    border: 2px solid var(--accent);
+    box-shadow: 4px 4px 0 var(--accent);
+    transform: translate(-50%, 6px) scale(0.92);
+    transform-origin: 50% 100%;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 160ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s linear 220ms;
+  }
+  /* The pointer: an accent triangle with the ink one inset on top. */
+  .tip::before,
+  .tip::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 9px solid transparent;
+    border-top-color: var(--accent);
+  }
+  .tip::after { border-width: 6px; border-top-color: var(--ink); }
+  .hint:hover + .tip,
+  .hint:focus-visible + .tip,
+  .term:global(.is-open) .tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0) scale(1);
+    transition: opacity 160ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s;
+  }
+  @media (max-width: 640px) {
+    .tip { left: auto; right: -8px; transform: translate(0, 6px) scale(0.92); transform-origin: 90% 100%; }
+    .hint:hover + .tip, .hint:focus-visible + .tip, .term:global(.is-open) .tip { transform: none; }
+    .tip::before, .tip::after { left: auto; right: 10px; transform: none; }
+    .tip::after { right: 13px; }
   }
 
-  @media (max-width: 900px) {
-    .hero-sub { grid-template-columns: 1fr 1fr; }
-    .manifesto { grid-column: 1 / -1; }
+  .figures {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 0;
   }
-  @media (max-width: 560px) {
-    .hero { padding: 36px 0 32px; }
-    .hero-eyebrow { font-size: 11px; }
-    .hero-sub { grid-template-columns: 1fr 1fr; gap: 18px; }
-    .manifesto { font-size: 18px; }
+  .figure { padding-left: 20px; border-left: 1px solid var(--hairline); }
+  .figure dt { font-size: 11px; letter-spacing: 0.16em; color: var(--muted); }
+  .figure dd {
+    margin: 8px 0 0;
+    font-size: clamp(40px, 4.2vw, 72px);
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 1080px) {
+    /* Stats column: figures, with the boombox sitting above them on the right. */
+  .stats { display: flex; flex-direction: column; align-items: stretch; }
+  .stats .figures { order: 2; }
+  .boombox {
+    order: 1;
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--ink);
+    cursor: pointer;
+  }
+  .boombox svg { width: 28px; height: 18px; }
+  .boombox[aria-pressed="true"] .spk { animation: thump 640ms ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .boombox[aria-pressed="false"] { color: var(--muted); border-color: var(--hairline); }
+  @keyframes thump {
+    0% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  .base { grid-template-columns: 1fr; gap: 32px; }
+  }
+  @media (max-width: 640px) {
+    .hero { padding-block: 28px 32px; }
+    .headline { font-size: clamp(48px, 15vw, 96px); }
+    .marks { gap: 4px 14px; }
+    .marks :global(.cluster) { height: 44px; width: auto; }
+    .pitch p { font-size: 18px; }
+    .figures { grid-template-columns: repeat(2, 1fr); row-gap: 20px; }
+    .figure { padding-left: 12px; }
+    .figure:nth-child(odd) { padding-left: 0; border-left: 0; }
+    .figure dd { font-size: 40px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slam--left, .slam--right, .hero { animation: none; }
+    .tally[data-drawn] .marks :global(.cluster line) { animation: none; }
+    .zzz { display: none; }
+    .ghost { display: none; }
+    .stop-dot { animation: none; }
+    .headline em, .figure dd, .corner, .boombox .spk { animation: none; }
+    .reticle { transition: opacity 200ms ease; }
   }
 </style>

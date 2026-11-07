@@ -1,0 +1,121 @@
+---
+import SectionHeader from "./ui/SectionHeader.astro";
+import ack from "@data/acknowledgements.json";
+
+/** Thanks to the faculty behind our hackathons, and the partners who backed them. */
+---
+
+<section class="sec" id="acknowledgements" aria-labelledby="ack-heading">
+  <div class="wrap">
+    <SectionHeader title="Acknowledgements" id="ack-heading" />
+
+    <div class="grid">
+      <div class="people">
+        {ack.people.map((p) => (
+          <a class="person" href={p.url} target="_blank" rel="noopener noreferrer">
+            <img src={p.photo} alt="" width="256" height="320" loading="lazy" />
+            <span class="person-name">{p.name}</span>
+            <span class="person-title font-mono upper">{p.title}</span>
+          </a>
+        ))}
+      </div>
+
+      <div class="partners">
+        <p class="label font-mono upper">Our partners</p>
+        <ul class="cloud">
+          {ack.partners.map((c) => {
+            const Tag = c.url ? "a" : "span";
+            const link = c.url ? { href: c.url, target: "_blank", rel: "noopener noreferrer" } : {};
+            return (
+              <li class:list={[c.wide && "wide"]}>
+                <Tag {...link} title={c.name} class:list={["co", c.mark && "co--mark", !c.logo && "co--word", c.wide && "co--wide"]}>
+                  {c.logo && <img src={c.logo} alt={c.mark ? "" : c.name} loading="lazy" />}
+                  {(c.mark || !c.logo) && <span class="co-name">{c.name}</span>}
+                </Tag>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .sec { padding: 72px 0; border-bottom: 1.5px solid var(--ink); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+
+  /* Faculty */
+  .people {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 28px 28px 28px 0;
+    border-right: 1.5px solid var(--ink);
+  }
+  .person { display: grid; gap: 6px; align-content: start; }
+  .person img {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border: 1.5px solid var(--ink);
+    filter: grayscale(1);
+    transition: filter var(--dur-normal) ease;
+  }
+  .person:hover img, .person:focus-visible img { filter: none; }
+  .person-name { margin-top: 6px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .person-title { font-size: 10px; letter-spacing: 0.12em; color: var(--muted); line-height: 1.5; }
+
+  /* Partners: Engineering Entrepreneurship first, then the cloud */
+  .partners { padding: 28px 0 28px 32px; display: grid; gap: 24px; align-content: start; }
+  .label { margin: 0; font-size: 12px; letter-spacing: 0.14em; color: var(--muted); }
+  .cloud {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 30px 18px;
+    align-items: center;
+  }
+  .cloud li { display: flex; justify-content: center; min-width: 0; }
+  .cloud li.wide { grid-column: span 2; }
+  .co { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; color: var(--ink); }
+  .co img { display: block; height: 32px; width: auto; max-width: 100%; object-fit: contain; filter: brightness(0); opacity: 0.85; }
+  .co--mark img { height: 26px; }
+  .co img[src$="aws.svg"] { height: 40px; }
+  .co img[src$="hackpsu.png"] { height: 34px; }
+  .co img[src$="mics.png"] { height: 46px; }
+  .co img[src$="open-build.png"] { height: 40px; }
+  .co img[src$="hax.png"] { height: 34px; }
+  .co img[src$="google-developers.png"] { height: 38px; }
+  .co img[src$="cospace.png"] { height: 28px; }
+  .co.co--wide img { height: 52px; opacity: 1; }
+  .co-name { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
+  .co--word .co-name { font-size: 16px; white-space: normal; text-align: center; }
+  a.co:hover img { opacity: 1; }
+  a.co:hover .co-name { color: var(--accent); }
+
+  :global([data-theme="dark"]) .co img { filter: brightness(0) invert(1); }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .co img { filter: brightness(0) invert(1); }
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .people { padding-right: 0; border-right: 0; border-bottom: 1.5px solid var(--ink); }
+    .partners { padding-left: 0; }
+  }
+  @media (max-width: 520px) {
+    .cloud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cloud { gap: 22px 12px; }
+    .co img { height: 24px; }
+    .co--mark img { height: 20px; }
+    .co-name { font-size: 15px; }
+    .co.co--wide img { height: 38px; }
+  }
+</style>

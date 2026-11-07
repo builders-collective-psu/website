@@ -6,28 +6,26 @@ import log from "@data/log.json";
 import HackathonLog from "./HackathonLog.astro";
 
 /**
- * Wins.
+ * Built & Won.
  *
- * With REAL_DATA set, every recap logged on the platform with won = true,
- * fetched after paint; the section stays hidden until real wins arrive,
- * because inventing wins when the API is down is worse than showing nothing.
+ * With live data this is a show that plays to the page beat: events on the
+ * left with their photos, and on the right one winning project at a time —
+ * what it was, who built it, links — followed by the team's LinkedIn posts
+ * ("larps") springing in one by one. After the last larp it moves to the next
+ * winning project at that event, then to the next event. Data comes from
+ * /api/builds; the section stays hidden until it arrives.
  *
- * Without it, the checked-in mock trophies render at build time and nothing
- * is fetched.
+ * Without live data the checked-in mock trophies render as a static list.
  */
 interface Props {
   endpoint?: string;
 }
 
-const { endpoint = "/api/recaps" } = Astro.props;
+const { endpoint = "/api/builds" } = Astro.props;
 
-const mockWins = trophies
-  .filter((t) => t.place === 1)
-  .sort((a, b) => (a.date < b.date ? 1 : -1));
-
+const mockWins = trophies.filter((t) => t.place === 1).sort((a, b) => (a.date < b.date ? 1 : -1));
 const mockPrize = mockWins.reduce((sum, t) => sum + (t.prize?.cash ?? 0), 0);
-const fmtCash = (n: number) =>
-  n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
+const fmtCash = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`);
 
 const meta = REAL_DATA
   ? '<span data-stat="teamWins" data-stat-guess="30">—</span> FIRST-PLACE FINISHES · <span data-stat="prizeTotal" data-stat-prefix="$" data-stat-guess="2000">—</span> IN PRIZES'
@@ -39,26 +37,67 @@ const meta = REAL_DATA
     <p class="section-divider font-mono upper">The collective / Our track record</p>
     <SectionHeader title="Built & Won" meta={meta} id="trophies-heading" />
 
-    <div class="trophy-grid" data-trophy-grid>
-      {
-        !REAL_DATA &&
-          mockWins.map((t) => (
-            <article class="trophy">
-              <div class="t-date font-mono">{t.dateShort}</div>
-              <div class="t-body">
-                <h3>{t.event}</h3>
-                <div class="where font-mono">{t.where} · {t.track}</div>
-                <p>{t.summary}</p>
-                <div class="t-prize font-mono">
-                  ↳ {fmtCash(t.prize.cash)} + {t.prize.extras}
-                </div>
+    {
+      REAL_DATA ? (
+        <div class="show" data-show>
+          {/* Flame distortion for the top multiplier: animated turbulence
+              displacing the glyphs, like a heat shimmer. */}
+          <svg class="fx-defs" width="0" height="0" aria-hidden="true" focusable="false">
+            <filter id="bc-fire" x="-20%" y="-40%" width="140%" height="180%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02 0.09" numOctaves="2" seed="3" result="noise">
+                <animate attributeName="baseFrequency" dur="6s" values="0.018 0.07;0.022 0.1;0.018 0.07" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite" />
+              </feTurbulence>
+              <feOffset in="noise" dy="0" result="rising">
+                <animate attributeName="dy" dur="3.2s" values="0;-12" repeatCount="indefinite" />
+              </feOffset>
+              <feDisplacementMap in="SourceGraphic" in2="rising" scale="3.5" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </svg>
+          <div class="left">
+            <ol class="events" data-events aria-label="Events we won at" />
+          </div>
+          <div class="right" aria-live="polite">
+            <div class="post-slot" data-post />
+            <div class="larp-slot" data-larp />
+            <div class="progress" data-progress>
+              <div class="bar-row">
+                <div class="bar" data-bar role="group" aria-label="Projects and posts at this event" />
+                <button type="button" class="pause font-mono upper" data-pause aria-pressed="false" aria-label="Pause">
+                  <span class="pause-icon" aria-hidden="true" />
+                </button>
               </div>
-              <div class="t-tag font-mono upper">★ 1ST</div>
-            </article>
-          ))
-      }
-    </div>
-    {!REAL_DATA && <details class="all-results"><summary class="font-mono upper">Explore all {log.events.length} builds & results <span aria-hidden="true">↳</span></summary><HackathonLog log={log} embedded /></details>}
+              <div class="bar-label font-mono upper" data-bar-label />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div class="mock-grid">
+            {mockWins.map((t) => (
+              <article class="mock">
+                <div class="font-mono mock-date">{t.dateShort}</div>
+                <div>
+                  <h3>{t.event}</h3>
+                  <div class="font-mono mock-where">
+                    {t.where} · {t.track}
+                  </div>
+                  <p>{t.summary}</p>
+                  <div class="font-mono mock-prize">
+                    ↳ {fmtCash(t.prize.cash)} + {t.prize.extras}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+          <details class="all-results">
+            <summary class="font-mono upper">
+              Explore all {log.events.length} builds & results <span aria-hidden="true">↳</span>
+            </summary>
+            <HackathonLog log={log} embedded />
+          </details>
+        </>
+      )
+    }
   </div>
 </section>
 
@@ -66,63 +105,476 @@ const meta = REAL_DATA
   <script is:inline define:vars={{ endpoint }}>
   (function () {
     const section = document.querySelector("[data-trophies]");
-    const grid = document.querySelector("[data-trophy-grid]");
-    if (!grid) return;
-
-    // Shared with the recap feed and gallery so the page makes one request.
-    window.__recaps =
-      window.__recaps ||
-      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
-        if (!response.ok) throw new Error(`recaps HTTP ${response.status}`);
-        return response.json();
-      });
+    const show = document.querySelector("[data-show]");
+    if (!section || !show) return;
+    const list = show.querySelector("[data-events]");
+    const postSlot = show.querySelector("[data-post]");
+    const larpSlot = show.querySelector("[data-larp]");
+    const bar = show.querySelector("[data-bar]");
+    const barLabel = show.querySelector("[data-bar-label]");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const el = (tag, className, text) => {
       const node = document.createElement(tag);
       if (className) node.className = className;
-      if (text !== undefined && text !== null) node.textContent = String(text);
+      if (text !== undefined && text !== null && text !== "") node.textContent = String(text);
       return node;
     };
-
-    const shortDate = (iso) => {
-      const date = new Date(iso);
-      if (Number.isNaN(date.getTime())) return "";
-      return `${String(date.getMonth() + 1).padStart(2, "0")} / ${String(date.getFullYear()).slice(2)}`;
+    const link = (label, href) => {
+      const a = el("a", "chip font-mono upper", label);
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      return a;
+    };
+    const img = (src, alt, className) => {
+      const i = el("img", className);
+      i.src = src;
+      i.alt = alt;
+      i.loading = "lazy";
+      i.referrerPolicy = "no-referrer";
+      i.addEventListener("error", () => i.remove());
+      return i;
+    };
+    const money = (cents) => (typeof cents === "number" && cents > 0 ? `$${Math.round(cents / 100).toLocaleString("en-US")}` : null);
+    const fmtDates = (start, end) => {
+      if (!start) return "";
+      const parts = (iso) => {
+        const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+        return { y, d, mon: new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }) };
+      };
+      const a = parts(start);
+      const b = parts(end || start);
+      if (a.y !== b.y) return `${a.mon} ${a.d}, ${a.y} – ${b.mon} ${b.d}, ${b.y}`;
+      if (a.mon !== b.mon) return `${a.mon} ${a.d} – ${b.mon} ${b.d}, ${a.y}`;
+      if (a.d !== b.d) return `${a.mon} ${a.d}–${b.d}, ${a.y}`;
+      return `${a.mon} ${a.d}, ${a.y}`;
+    };
+    const spring = (node) => {
+      node.classList.remove("spring");
+      void node.offsetWidth;
+      node.classList.add("spring");
     };
 
-    const money = (cents) =>
-      typeof cents === "number" && cents > 0
-        ? `$${Math.round(cents / 100).toLocaleString("en-US")}`
-        : null;
+    let events = [];
+    let ei = 0; // event
+    let pi = 0; // project at that event
+    let li = -1; // larp (-1: the project card on its own)
+    let beatsLeft = 0;
+    let inView = false;
 
-    function renderWin(win) {
-      const article = el("article", "trophy");
-      article.appendChild(el("div", "t-date font-mono", shortDate(win.createdAt)));
+    // Beats each step holds for.
+    const HOLD_PROJECT = 2;
+    const HOLD_LARP = 5;
+    const HOLD_ALONE = 4;
 
-      const body = el("div", "t-body");
-      body.appendChild(el("h3", null, win.event));
-
-      const detail = [win.track, win.team].filter(Boolean).join(" · ");
-      if (detail) body.appendChild(el("div", "where font-mono", detail));
-
-      const people = (win.people || []).join(", ");
-      if (people) body.appendChild(el("p", null, people));
-
-      const cash = money(win.prizeCents);
-      const prizeLine = [cash, win.prizeName].filter(Boolean).join(" + ");
-      if (prizeLine) body.appendChild(el("div", "t-prize font-mono", `↳ ${prizeLine}`));
-
-      article.appendChild(body);
-      article.appendChild(el("div", "t-tag font-mono upper", win.placement || "★ WIN"));
-      return article;
+    // Event cards, in the original format: name, dates, every winning team by
+    // its members with what they won, and the N× multiplier.
+    const tier = (n) => (n >= 6 ? 5 : n >= 4 ? 4 : n);
+    // The largest multiplier (or all of them, if tied) gets the fire effect.
+    let topCount = 0;
+    function renderEvents() {
+      topCount = Math.max(...events.map((e) => e.projects.reduce((t, p) => t + Math.max(1, p.members.length), 0)));
+      list.replaceChildren(
+        ...events.map((event, i) => {
+          const item = el("li", "ev");
+          const card = el("article", "trophy");
+          card.tabIndex = 0;
+          card.setAttribute("role", "button");
+          const body = el("div", "t-body");
+          body.appendChild(el("h3", null, event.event));
+          const when = fmtDates(event.start, event.end);
+          if (when) body.appendChild(el("div", "t-when font-mono upper", when));
+          const teams = el("ul", "t-teams");
+          event.projects.forEach((project) => {
+            const row = el("li");
+            row.appendChild(el("span", "t-names", project.members.map((m) => m.name).join(", ") || project.team || "—"));
+            const what = [project.prize || project.placement || "Winner", money(project.prizeCents)].filter(Boolean).join(" · ");
+            row.appendChild(el("span", "t-what font-mono", what));
+            teams.appendChild(row);
+          });
+          body.appendChild(teams);
+          card.appendChild(body);
+          const count = event.projects.reduce((t, p) => t + Math.max(1, p.members.length), 0);
+          const mult = el("div", `t-mult t-mult--${tier(count)} font-mono${count === topCount ? " t-mult--fire" : ""}`, `${count}×`);
+          mult.setAttribute("aria-label", `${count} ${count === 1 ? "win" : "wins"}`);
+          card.appendChild(mult);
+          const pick = () => {
+            goEvent(i);
+            window.__sfx && window.__sfx.select();
+          };
+          card.addEventListener("click", pick);
+          card.dataset.index = String(i);
+          // Focusing an event shows it on the right and scrolls the list to it.
+          card.addEventListener("focus", () => ei !== i && goEvent(i));
+          card.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              pick();
+            }
+          });
+          item.appendChild(card);
+          return item;
+        }),
+      );
     }
 
-    window.__recaps
+    function renderProject() {
+      const event = events[ei];
+      const project = event.projects[pi];
+      const card = el("article", "post");
+      const top = el("div", "post-top font-mono upper");
+      top.appendChild(el("span", "post-place", project.placement || "Winner"));
+      const cash = money(project.prizeCents);
+      top.appendChild(el("span", "post-event", [event.event, cash].filter(Boolean).join("  ·  ")));
+      card.appendChild(top);
+      // Gallery photos (Devpost first) float top right of the card.
+      const shots = (project.photos || []).slice(0, 3);
+      if (shots.length) {
+        const gallery = el("div", `post-photos post-photos--${shots.length}`);
+        shots.forEach((src, i) => gallery.appendChild(img(src, i === 0 ? `${project.title || "Project"} photo` : "", "post-photo")));
+        card.appendChild(gallery);
+      }
+      card.appendChild(el("h3", "post-title", project.title || project.team || "Winning project"));
+      if (project.prize && project.prize !== project.placement) card.appendChild(el("p", "post-prize font-mono", `↳ ${project.prize}`));
+      if (project.summary) card.appendChild(el("p", "post-summary", project.summary));
+      if (project.track) card.appendChild(el("p", "post-track font-mono upper", `Track · ${project.track}`));
+
+      const team = el("ul", "post-team");
+      project.members.forEach((m) => {
+        const li = el("li", "member");
+        if (m.image) li.appendChild(img(m.image, "", "avatar"));
+        else li.appendChild(el("span", "avatar avatar--blank", (m.name || "?").slice(0, 1)));
+        li.appendChild(el("span", "member-name", m.name));
+        team.appendChild(li);
+      });
+      card.appendChild(team);
+
+      const links = el("div", "post-links");
+      if (project.devpost) links.appendChild(link("Devpost ↗", project.devpost));
+      if (project.github) links.appendChild(link("GitHub ↗", project.github));
+      if (links.childNodes.length) card.appendChild(links);
+
+      postSlot.replaceChildren(card);
+      spring(card);
+    }
+
+    // The project's posts, as a feed: all of them stacked in a fixed window,
+    // the current one at the top and the next peeking in below. Each step
+    // slides the stack up to the next post instead of swapping cards.
+    const PREV_PEEK = 56; // px of the previous post kept in view
+    let larpKey = "";
+    let larpTrack = null;
+    let autoScrolling = false;
+    let autoScrollTimer = 0;
+
+    // Hovering a post (e.g. the one peeking in below) brings it into focus:
+    // the feed scrolls to it on its own, no scrolling needed. As with the
+    // events list, only real pointer movement counts, so a post sliding under
+    // a still pointer does not keep pulling the feed along.
+    let larpX = -1;
+    let larpY = -1;
+    let larpHoverTimer = 0;
+    larpSlot.addEventListener("pointermove", (event) => {
+      if (event.clientX === larpX && event.clientY === larpY) return;
+      larpX = event.clientX;
+      larpY = event.clientY;
+      const card = event.target instanceof Element ? event.target.closest(".larp") : null;
+      if (!card || !larpTrack) return;
+      const index = [...larpTrack.children].indexOf(card);
+      clearTimeout(larpHoverTimer);
+      larpHoverTimer = setTimeout(() => {
+        if (index >= 0 && index !== li) jumpTo(pi, index);
+      }, 160);
+    });
+    larpSlot.addEventListener("pointerleave", () => clearTimeout(larpHoverTimer));
+
+    // Scrolling the posts by hand makes the post it settles on the current
+    // one (and restarts its hold), so the progress bar follows along.
+    let settleTimer = 0;
+    larpSlot.addEventListener(
+      "scroll",
+      () => {
+        if (autoScrolling || !larpTrack) return;
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+          const cards = [...larpTrack.children];
+          const top = larpSlot.scrollTop + PREV_PEEK;
+          let nearest = 0;
+          cards.forEach((card, i) => {
+            if (Math.abs(card.offsetTop - top) < Math.abs(cards[nearest].offsetTop - top)) nearest = i;
+          });
+          if (nearest !== li) {
+            li = nearest;
+            cards.forEach((card, i) => {
+              card.classList.toggle("is-on", i === li);
+              card.classList.toggle("is-past", i < li);
+            });
+            renderProgress({ scroll: false });
+            beatsLeft = hold();
+            paintFill();
+          }
+        }, 140);
+      },
+      { passive: true },
+    );
+
+    function larpCard(larp) {
+      const card = el("article", "larp");
+      const head = el("div", "larp-head");
+      if (larp.authorImage) head.appendChild(img(larp.authorImage, "", "avatar"));
+      head.appendChild(el("span", "larp-author", larp.author));
+      head.appendChild(el("span", "larp-where font-mono upper", "on LinkedIn"));
+      card.appendChild(head);
+      const body = el("div", "larp-body");
+      if (larp.image) body.appendChild(img(larp.image, "", "larp-img"));
+      if (larp.text) body.appendChild(el("p", "larp-text", larp.text));
+      card.appendChild(body);
+      if (larp.url) card.appendChild(link("Read post ↗", larp.url));
+      return card;
+    }
+
+    function renderLarp() {
+      const project = events[ei].projects[pi];
+      const key = `${ei}:${pi}`;
+      if (!project.larps.length) {
+        larpKey = key;
+        larpTrack = null;
+        larpSlot.replaceChildren();
+        larpSlot.classList.add("is-empty");
+        return;
+      }
+      larpSlot.classList.remove("is-empty");
+      if (key !== larpKey || !larpTrack) {
+        larpKey = key;
+        larpTrack = el("div", "larp-track");
+        project.larps.forEach((larp) => larpTrack.appendChild(larpCard(larp)));
+        // The entrance spring goes on a wrapper: an animation on the track
+        // itself would hold its transform and stop the stack from scrolling.
+        const feed = el("div", "larp-feed");
+        feed.appendChild(larpTrack);
+        larpSlot.replaceChildren(feed);
+        spring(feed);
+      }
+      const cards = [...larpTrack.children];
+      // Before the first post comes up, the stack waits at the top, faded.
+      const at = Math.max(0, li);
+      cards.forEach((card, i) => {
+        card.classList.toggle("is-on", li >= 0 && i === li);
+        card.classList.toggle("is-past", li >= 0 && i < li);
+      });
+      // The window is a real scroll area, so people can also scroll through
+      // posts themselves; the show scrolls it the same way.
+      // Leave the bottom of the previous post showing above, so it can be
+      // hovered to go back.
+      const target = cards[at] ? Math.max(0, cards[at].offsetTop - PREV_PEEK) : 0;
+      autoScrolling = true;
+      larpSlot.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
+      clearTimeout(autoScrollTimer);
+      autoScrollTimer = setTimeout(() => (autoScrolling = false), 700);
+      if (li >= 0 && cards[li]) {
+        cards[li].classList.remove("pop");
+        void cards[li].offsetWidth;
+        cards[li].classList.add("pop");
+      }
+    }
+
+    // Hovering an event shows it on the right and scrolls the list to centre
+    // it. Only real pointer movement counts: when the list scrolls, a new card
+    // slides under a still pointer and the browser reports it at the same
+    // coordinates — ignoring those keeps it from chasing itself down the list.
+    let lastX = -1;
+    let lastY = -1;
+    let hoverTimer = 0;
+    list.addEventListener("pointermove", (event) => {
+      if (event.clientX === lastX && event.clientY === lastY) return;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      const card = event.target instanceof Element ? event.target.closest(".trophy") : null;
+      if (!card) return;
+      const i = Number(card.dataset.index);
+      clearTimeout(hoverTimer);
+      // A short wait so sweeping the pointer across the list does not flicker.
+      hoverTimer = setTimeout(() => ei !== i && goEvent(i), 140);
+    });
+    list.addEventListener("pointerleave", () => clearTimeout(hoverTimer));
+
+    let scrolledTo = -1;
+    function renderProgress({ scroll = true } = {}) {
+      const event = events[ei];
+      const project = event.projects[pi];
+      // Progress bar: one group per winning project at this event, one segment
+      // for the project card and one per post under it. Done segments are
+      // solid, the current one fills on the beat, and any segment jumps there.
+      bar.replaceChildren(
+        ...event.projects.map((p, pIndex) => {
+          const group = el("div", "seg-group");
+          // Width follows the number of segments, so every segment is equal.
+          group.style.flexGrow = String(1 + p.larps.length);
+          [-1, ...p.larps.map((_, lIndex) => lIndex)].forEach((lIndex) => {
+            const seg = el("button", "seg");
+            seg.type = "button";
+            const isCurrent = pIndex === pi && lIndex === li;
+            const isDone = pIndex < pi || (pIndex === pi && lIndex < li);
+            if (isCurrent) seg.classList.add("is-current");
+            else if (isDone) seg.classList.add("is-done");
+            if (lIndex < 0) seg.classList.add("seg--project");
+            seg.setAttribute(
+              "aria-label",
+              lIndex < 0
+                ? `Project ${pIndex + 1}: ${p.title || p.team || "winning project"}`
+                : `Post ${lIndex + 1} by ${p.larps[lIndex].author}`,
+            );
+            if (isCurrent) {
+              seg.setAttribute("aria-current", "step");
+              // One notch per beat this step is held; it fills a notch a beat.
+              seg.style.setProperty("--ticks", String(hold()));
+            }
+            seg.appendChild(el("span", "seg-fill"));
+            seg.addEventListener("click", () => jumpTo(pIndex, lIndex));
+            group.appendChild(seg);
+          });
+          return group;
+        }),
+      );
+      const bits = [`Project ${pi + 1} of ${event.projects.length}`];
+      if (project.larps.length) bits.push(li >= 0 ? `Post ${li + 1} of ${project.larps.length}` : `${project.larps.length} ${project.larps.length === 1 ? "post" : "posts"} next`);
+      barLabel.textContent = bits.join("  ·  ");
+      [...list.children].forEach((item, i) => item.classList.toggle("is-on", i === ei));
+      const active = list.children[ei];
+      // Only re-centre the list when the event changes, not on every post.
+      if (active && scroll && scrolledTo !== ei) {
+        scrolledTo = ei;
+        // Scroll the list, not the page.
+        const top = active.offsetTop - list.clientHeight / 2 + active.clientHeight / 2;
+        list.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
+      }
+    }
+
+    // The current segment fills on the beat: one notch per beat, with a
+    // springy snap and a small bump, so the bar keeps time with the music.
+    function paintFill({ bump = false } = {}) {
+      const seg = bar.querySelector(".seg.is-current");
+      const fill = seg && seg.querySelector(".seg-fill");
+      if (!fill) return;
+      const total = hold();
+      fill.style.transform = `scaleX(${Math.max(0, Math.min(1, (total - beatsLeft) / total))})`;
+      if (bump) {
+        seg.classList.remove("is-beat");
+        void seg.offsetWidth;
+        seg.classList.add("is-beat");
+      }
+    }
+
+    function jumpTo(pIndex, lIndex) {
+      const projectChanged = pIndex !== pi;
+      pi = pIndex;
+      li = lIndex;
+      if (projectChanged || lIndex < 0) renderProject();
+      renderLarp();
+      renderProgress({ scroll: false });
+      beatsLeft = hold();
+      paintFill();
+      window.__sfx && window.__sfx.select();
+    }
+
+    function hold() {
+      const project = events[ei].projects[pi];
+      if (li >= 0) return HOLD_LARP;
+      return project.larps.length ? HOLD_PROJECT : HOLD_ALONE;
+    }
+
+    // The hero tally asks to show an event here: select it and bring the
+    // section into view. Events are matched by name, the way both group them.
+    const nameKey = (name) => String(name || "").toLowerCase().replace(/\s+/g, " ").trim();
+    window.addEventListener("builds:show", (e) => {
+      const i = events.findIndex((ev) => nameKey(ev.event) === nameKey(e.detail));
+      section.scrollIntoView({ block: "start", behavior: reduced ? "auto" : "smooth" });
+      if (i < 0) return;
+      goEvent(i);
+      window.__sfx && window.__sfx.select();
+    });
+
+    function goEvent(i, { scroll = true } = {}) {
+      ei = (i + events.length) % events.length;
+      pi = 0;
+      li = -1;
+      renderProject();
+      renderLarp();
+      renderProgress({ scroll });
+      beatsLeft = hold();
+      paintFill();
+    }
+
+    function step() {
+      const event = events[ei];
+      const project = event.projects[pi];
+      if (li + 1 < project.larps.length) {
+        li++;
+        renderLarp();
+        renderProgress();
+      } else if (pi + 1 < event.projects.length) {
+        pi++;
+        li = -1;
+        renderProject();
+        renderLarp();
+        renderProgress();
+      } else {
+        goEvent(ei + 1);
+        window.__sfx && window.__sfx.select();
+        return;
+      }
+      window.__sfx && window.__sfx.select();
+      beatsLeft = hold();
+      paintFill();
+    }
+
+    // The pause button stops the show until pressed again.
+    const pauseButton = show.querySelector("[data-pause]");
+    let userPaused = false;
+    pauseButton.addEventListener("click", () => {
+      userPaused = !userPaused;
+      pauseButton.setAttribute("aria-pressed", String(userPaused));
+      pauseButton.setAttribute("aria-label", userPaused ? "Play" : "Pause");
+      show.classList.toggle("is-stopped", userPaused);
+    });
+
+    // Hovering the show pauses it, so people can read.
+    let paused = false;
+    show.addEventListener("pointerenter", () => {
+      paused = true;
+      paintFill();
+    });
+    show.addEventListener("pointerleave", () => {
+      paused = false;
+      paintFill();
+    });
+
+    window.addEventListener("fx:beat", (e) => {
+      if (!events.length || !inView || paused || userPaused || reduced) return;
+      if (--beatsLeft <= 0) step();
+      else paintFill({ bump: true });
+    });
+
+    new IntersectionObserver((entries) => {
+      inView = entries.some((entry) => entry.isIntersecting);
+      paintFill();
+    }, { threshold: 0.3 }).observe(show);
+
+    window.__builds =
+      window.__builds ||
+      fetch(endpoint, { headers: { accept: "application/json" } }).then((response) => {
+        if (!response.ok) throw new Error(`builds HTTP ${response.status}`);
+        return response.json();
+      });
+
+    window.__builds
       .then((data) => {
-        const wins = Array.isArray(data.wins) ? data.wins : [];
-        if (!wins.length) return;
-        wins.forEach((win) => grid.appendChild(renderWin(win)));
-        section?.removeAttribute("hidden");
+        events = (Array.isArray(data.events) ? data.events : []).filter((e) => e.projects && e.projects.length);
+        if (!events.length) return;
+        renderEvents();
+        goEvent(0);
+        section.removeAttribute("hidden");
       })
       .catch(() => {
         /* endpoint missing or upstream down — section stays hidden */
@@ -138,99 +590,330 @@ const meta = REAL_DATA
     border-bottom: 1.5px solid var(--ink);
   }
   .sec[hidden] { display: none; }
-  .section-divider { color: var(--muted); font-size: 11px; letter-spacing: .14em; margin: 0 0 24px; }
-  .all-results { margin-top: 32px; border-top: 1.5px solid var(--ink); }
-  .all-results summary { cursor: pointer; padding: 20px 0; font-size: 12px; letter-spacing: .08em; }
-  .all-results summary:hover { color: var(--accent); }
-  .all-results summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .section-divider { color: var(--muted); font-size: 11px; letter-spacing: 0.14em; margin: 0 0 24px; }
 
-  .trophy-grid {
+  /* ---------- The show ---------- */
+  .show {
     display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 0;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     border-top: 1.5px solid var(--ink);
-  }
-
-  .trophy-grid :global(.trophy) {
-    grid-column: span 6;
     border-bottom: 1.5px solid var(--ink);
-    border-right: 1.5px solid var(--ink);
-    padding: 28px 24px 24px;
+  }
+  .left { border-right: 1.5px solid var(--ink); min-height: 0; padding-right: 24px; }
+  .right { padding: 28px 0 24px 32px; display: flex; flex-direction: column; gap: 18px; min-height: 640px; }
+
+  .events {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 720px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  /* Event cards (original format) */
+  .events :global(.trophy) {
     display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 20px;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
     align-items: start;
-    transition: background var(--dur-normal) ease;
+    padding: 22px 20px 20px 0;
+    border-bottom: 1.5px solid var(--ink);
+    cursor: pointer;
+    transition: background var(--dur-normal) ease, padding var(--dur-normal) ease;
   }
-  .trophy-grid :global(.trophy:nth-child(2n)) { border-right: none; }
-  .trophy-grid :global(.trophy:hover) { background: var(--paper-2); }
-  .trophy-grid :global(.trophy:hover .t-tag) {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--paper);
+  .events :global(.trophy:hover) { background: var(--paper-2); }
+  .events :global(.ev.is-on .trophy) {
+    background: var(--paper-2);
+    padding-left: 16px;
+    box-shadow: inset 4px 0 0 var(--accent);
   }
-
-  .trophy-grid :global(.t-date) {
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    border: 1px solid var(--ink);
-    padding: 6px 8px;
-    line-height: 1;
-    align-self: start;
-    white-space: nowrap;
-  }
-
-  .trophy-grid :global(.t-body h3) {
-    font-size: 28px;
+  .events :global(.trophy h3) {
+    margin: 0;
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: -0.02em;
-    margin: 0 0 4px;
     line-height: 1.05;
   }
-  .trophy-grid :global(.t-body .where) {
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-  }
-  .trophy-grid :global(.t-body p) {
-    font-size: 15px;
-    line-height: 1.4;
-    margin: 12px 0 0;
-    max-width: 44ch;
-  }
+  .events :global(.t-when) { margin-top: 6px; font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+  .events :global(.t-teams) { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  .events :global(.t-teams li) { display: grid; gap: 2px; }
+  .events :global(.t-names) { font-size: 14px; font-weight: 600; line-height: 1.35; }
+  .events :global(.t-what) { font-size: 11px; letter-spacing: 0.04em; color: var(--muted); line-height: 1.4; }
 
-  .trophy-grid :global(.t-tag) {
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 5px 9px;
-    border: 1px solid var(--ink);
-    align-self: start;
-    white-space: nowrap;
-    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease,
-      color var(--dur-fast) ease;
-  }
-
-  .trophy-grid :global(.t-prize) {
-    font-size: 12px;
-    color: var(--accent);
+  .events :global(.t-mult) {
+    --tint: var(--muted);
+    min-width: 2.2em;
+    font-size: 36px;
     font-weight: 700;
-    margin-top: 10px;
-    letter-spacing: 0.04em;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    text-align: right;
+    color: var(--tint);
+    transform-origin: right center;
+    animation: t-zoom 4s ease-in-out infinite;
+  }
+  .events :global(.t-mult--1) { animation: none; }
+  .events :global(.t-mult--2) { --tint: var(--ink); }
+  .events :global(.t-mult--3) { --tint: #e0a100; }
+  .events :global(.t-mult--4) { --tint: var(--accent); }
+  .events :global(.t-mult--5) { --tint: #e5254b; text-shadow: 0 0 18px color-mix(in srgb, #e5254b 45%, transparent); }
+  @keyframes t-zoom {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
   }
 
-  @media (max-width: 720px) {
-    .trophy-grid :global(.trophy) {
-      grid-column: span 12;
-      border-right: none;
-      grid-template-columns: auto 1fr;
-      gap: 16px;
-    }
-    .trophy-grid :global(.trophy .t-tag) {
-      grid-column: 2;
-      justify-self: start;
-      margin-top: 4px;
-    }
+  /* Fire on the top multiplier: a rising flame gradient clipped to the text,
+     a flickering glow, and the turbulence filter for the shimmer. */
+  .fx-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .events :global(.t-mult--fire) {
+    color: transparent;
+    background-image: linear-gradient(0deg, #b3130b 0%, #ff3d00 22%, #ff8a00 45%, #ffd23f 68%, #fff6c4 85%, #ff8a00 100%);
+    background-size: 100% 220%;
+    background-position: 50% 0%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: none;
+    filter: url(#bc-fire) drop-shadow(0 0 6px rgba(255, 120, 0, 0.55)) drop-shadow(0 -2px 12px rgba(255, 60, 0, 0.35));
+    animation:
+      t-zoom 4s ease-in-out infinite,
+      fire-rise 3.6s linear infinite,
+      fire-flicker 4.8s ease-in-out infinite;
+  }
+  @keyframes fire-rise {
+    from { background-position: 50% 0%; }
+    to { background-position: 50% 100%; }
+  }
+  @keyframes fire-flicker {
+    0%, 100% { opacity: 1; }
+    35% { opacity: 0.9; }
+    60% { opacity: 0.97; }
+    80% { opacity: 0.92; }
+  }
+
+  /* Project card */
+  .post-slot :global(.post) {
+    border: 1.5px solid var(--ink);
+    padding: 24px;
+    background: var(--paper);
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+  .post-slot :global(.post-top) {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
+  .post-slot :global(.post-place) { background: var(--accent); color: #0b1220; padding: 3px 8px; font-weight: 700; }
+  .post-slot :global(.post-event) { color: var(--muted); }
+  .post-slot :global(.post-photos) {
+    float: right;
+    width: 200px;
+    margin: 12px 0 12px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .post-slot :global(.post-photo) { width: 100%; height: 64px; object-fit: cover; border: 1px solid var(--ink); display: block; }
+  .post-slot :global(.post-photo:first-child) { grid-column: 1 / -1; height: 130px; }
+  .post-slot :global(.post-photos--2 .post-photo:nth-child(2)) { grid-column: 1 / -1; }
+  .post-slot :global(.post-links) { clear: both; }
+  @media (max-width: 560px) {
+    .post-slot :global(.post-photos) { float: none; width: 100%; margin: 14px 0 0; }
+  }
+  .post-slot :global(.post-title) {
+    margin: 16px 0 6px;
+    font-size: clamp(28px, 3.2vw, 44px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .post-slot :global(.post-prize) { margin: 0; font-size: 12px; color: var(--accent); font-weight: 700; }
+  .post-slot :global(.post-summary) { margin: 14px 0 0; font-size: 17px; line-height: 1.4; max-width: 56ch; }
+  .post-slot :global(.post-track) { margin: 12px 0 0; font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
+  .post-slot :global(.post-team) { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 18px; }
+  .post-slot :global(.member) { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  .show :global(.avatar) {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--ink);
+    flex: none;
+  }
+  .show :global(.avatar--blank) {
+    display: inline-grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--paper-2);
+  }
+  .post-slot :global(.post-links), .larp-slot :global(.larp) { display: flex; gap: 10px; flex-wrap: wrap; }
+  .post-slot :global(.post-links) { margin-top: 18px; }
+  .show :global(.chip) {
+    display: inline-flex;
+    padding: 6px 10px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    border: 1px solid var(--ink);
+  }
+  .show :global(.chip:hover) { background: var(--ink); color: var(--paper); }
+
+  /* Larp card, under the project */
+  /* A window onto the feed: the current post plus a peek at the next. */
+  .larp-slot {
+    position: relative;
+    height: 320px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y proximity;
+    scrollbar-width: thin;
+    mask-image: linear-gradient(rgba(0, 0, 0, 0.35), #000 6%, #000 82%, transparent);
+  }
+  .larp-slot.is-empty { height: 0; }
+  .larp-slot :global(.larp-track) { display: grid; gap: 14px; padding-bottom: 90px; }
+  /* Snap so the previous post's bottom edge stays visible above. */
+  .larp-slot :global(.larp) { scroll-snap-align: start; scroll-margin-top: 56px; }
+  .larp-slot :global(.larp) { opacity: 0.45; transition: opacity 320ms ease; }
+  .larp-slot :global(.larp.is-on) { opacity: 1; }
+  .larp-slot :global(.larp.is-past) { opacity: 0.5; }
+  .larp-slot :global(.larp.is-past:hover) { opacity: 0.8; }
+  .larp-slot :global(.larp.pop) { animation: larp-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes larp-pop {
+    0% { transform: scale(0.97); }
+    40% { transform: scale(1.015); }
+    100% { transform: none; }
+  }
+  .larp-slot :global(.larp) {
+    flex-direction: column;
+    gap: 12px;
+    margin-left: 28px;
+    padding: 18px;
+    border: 1px solid var(--ink);
+    border-left: 4px solid var(--accent);
+    background: var(--paper-2);
+  }
+  .larp-slot :global(.larp-head) { display: flex; align-items: center; gap: 10px; }
+  .larp-slot :global(.larp-author) { font-weight: 700; font-size: 14px; }
+  .larp-slot :global(.larp-where) { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
+  .larp-slot :global(.larp-body) { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
+  .larp-slot :global(.larp-img) { width: 120px; height: 90px; object-fit: cover; border: 1px solid var(--ink); }
+  .larp-slot :global(.larp-text) { margin: 0; font-size: 14px; line-height: 1.45; grid-column: auto; }
+  .larp-slot :global(.larp-body:not(:has(.larp-img)) .larp-text) { grid-column: 1 / -1; }
+
+  /* Progress bar, pinned to the bottom of the right panel. */
+  .progress { margin-top: auto; display: grid; gap: 8px; }
+  .bar { display: flex; gap: 6px; }
+  .bar :global(.seg-group) { flex: 1 1 0; min-width: 0; display: flex; gap: 2px; }
+  .bar :global(.seg) {
+    position: relative;
+    flex: 1;
+    height: 10px;
+    padding: 0;
+    border: 1px solid var(--ink);
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .bar :global(.seg--project) { flex: 1; }
+  .bar :global(.seg-fill) {
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  /* Beat notches across the current segment. */
+  .bar :global(.seg.is-current)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(100% / var(--ticks, 4) - 1px),
+      var(--paper) calc(100% / var(--ticks, 4) - 1px) calc(100% / var(--ticks, 4))
+    );
+    pointer-events: none;
+  }
+  .bar :global(.seg.is-beat) { animation: seg-beat 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes seg-beat {
+    0% { transform: none; }
+    35% { transform: scaleY(1.6); }
+    100% { transform: none; }
+  }
+  /* Finished segments stay orange, same as the one filling. */
+  .bar :global(.seg.is-done .seg-fill) { transform: scaleX(1); }
+  .bar :global(.seg.is-current) { border-color: var(--accent); }
+  .bar :global(.seg:hover) { background: var(--paper-2); }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-row .bar { flex: 1; }
+  .pause {
+    flex: none;
+    width: 30px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--ink);
+    cursor: pointer;
+  }
+  .pause:hover { background: var(--ink); color: var(--paper); }
+  /* Two bars for pause; a triangle once paused (press to play). */
+  .pause-icon { width: 8px; height: 10px; border-left: 3px solid currentColor; border-right: 3px solid currentColor; }
+  .pause[aria-pressed="true"] .pause-icon {
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid currentColor;
+    border-right: 0;
+  }
+  .bar-label { font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
+
+  /* Springs in, game-card style. */
+  .show :global(.spring) { animation: spring-in 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  @keyframes spring-in {
+    0% { opacity: 0; transform: translateY(26px) scale(0.94) rotate(-1deg); }
+    60% { opacity: 1; }
+    100% { opacity: 1; transform: none; }
+  }
+
+  /* ---------- Mock (no live data) ---------- */
+  .mock-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1.5px solid var(--ink); }
+  .mock { display: grid; grid-template-columns: auto 1fr; gap: 20px; padding: 24px; border-bottom: 1.5px solid var(--ink); }
+  .mock:nth-child(odd) { border-right: 1.5px solid var(--ink); }
+  .mock h3 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.02em; }
+  .mock-date, .mock-where { font-size: 12px; color: var(--muted); }
+  .mock p { margin: 10px 0 0; }
+  .mock-prize { margin-top: 10px; font-size: 12px; color: var(--accent); font-weight: 700; }
+  .all-results { margin-top: 32px; border-top: 1.5px solid var(--ink); }
+  .all-results summary { cursor: pointer; padding: 20px 0; font-size: 12px; letter-spacing: 0.08em; }
+
+  @media (max-width: 960px) {
+    .show { grid-template-columns: 1fr; }
+    .left { border-right: 0; border-bottom: 1.5px solid var(--ink); }
+    .left { padding-right: 0; }
+    .events { max-height: 360px; }
+    .right { padding: 24px 0; min-height: 0; }
+    .larp-slot :global(.larp) { margin-left: 12px; }
+    .mock-grid { grid-template-columns: 1fr; }
+    .mock:nth-child(odd) { border-right: 0; }
+  }
+  @media (max-width: 560px) {
+    .larp-slot :global(.larp-body) { grid-template-columns: 1fr; }
+    .larp-slot :global(.larp-img) { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .larp-slot { scroll-behavior: auto; }
+    .larp-slot :global(.larp.pop) { animation: none; }
+    .show :global(.spring), .events :global(.t-mult), .bar :global(.seg.is-beat) { animation: none; }
+    .events :global(.t-mult--fire) { filter: drop-shadow(0 0 6px rgba(255, 120, 0, 0.5)); background-position: 50% 40%; }
   }
 </style>

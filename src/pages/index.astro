@@ -4,9 +4,10 @@ import Hero from "@components/Hero.astro";
 import TrophyCase from "@components/TrophyCase.astro";
 import WhyEnti from "@components/WhyEnti.astro";
 import Team from "@components/Team.astro";
+import BlogTeaser from "@components/BlogTeaser.astro";
 import ApplySponsor from "@components/ApplySponsor.astro";
+import Acknowledgements from "@components/Acknowledgements.astro";
 import LiveStats from "@components/LiveStats.astro";
-import RecapFeed from "@components/RecapFeed.astro";
 
 import stats from "@data/stats.json";
 import enti from "@data/enti.json";
@@ -18,8 +19,9 @@ import apply from "@data/apply.json";
   <Hero stats={stats} />
   <TrophyCase />
   <WhyEnti enti={enti} />
-  <RecapFeed />
+  <BlogTeaser />
   <Team team={team} />
+  <Acknowledgements />
   <ApplySponsor apply={apply} />
   <LiveStats />
 </Base>

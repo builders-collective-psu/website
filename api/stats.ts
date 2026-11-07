@@ -59,7 +59,16 @@ export default async function handler(): Promise<Response> {
     const wins = leaderboardWins || feedWins;
     const hackathons = new Set(unique.map((recap) => recap.eventId)).size;
     const shipped = unique.length;
-    const prizeCents = unique.reduce((total, recap) => total + (recap.prizeCents ?? 0), 0);
+    // Prize money, counted the way bunker does: a prize paid per member counts
+    // once for each member of the team, a team-total prize once. All prize
+    // types (cash, credits, physical, other) are included. Summing bunker's
+    // leaderboard instead comes up short: team members without a bunker
+    // account are not on it, so their shares drop out.
+    const prizeCents = unique.reduce((total, recap) => {
+      const cents = recap.prizeCents ?? 0;
+      const people = Math.max(1, recap.teamMembers?.length ?? 1);
+      return total + (recap.prizeSplit === "per_member" ? cents * people : cents);
+    }, 0);
     const activeMembers = currentMembers(members);
     const teamWins = unique.filter((recap) => recap.won === true).length;
 
