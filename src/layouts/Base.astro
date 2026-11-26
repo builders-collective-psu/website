@@ -5,6 +5,7 @@ import { GATE_ENABLED, gateHashes } from "@lib/gate";
 import Masthead from "@components/Masthead.astro";
 import EventBanner from "@components/EventBanner.astro";
 import EventModal from "@components/EventModal.astro";
+import GameFX from "@components/GameFX.astro";
 import Footer from "@components/Footer.astro";
 import site from "@data/site.json";
 import stats from "@data/stats.json";
@@ -146,6 +147,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://psu.builder
     <EventModal />
 
     <Footer site={site} />
+
+    <GameFX />
   </body>
 </html>
 

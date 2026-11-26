@@ -1,6 +1,7 @@
 ---
 import { existsSync } from "node:fs";
 import SectionHeader from "./ui/SectionHeader.astro";
+import alumni from "@data/alumni.json";
 
 interface Member {
   id: string;
@@ -101,6 +102,25 @@ const cards = team.map((m) => ({
           </article>
         ))
       }
+      {/* Fills the rest of the last row, or a full row when that row is full:
+          spans are worked out for the 4- and 2-column layouts. */}
+      <aside
+        class="alumni"
+        aria-labelledby="alumni-heading"
+        style={`--span4: ${4 - (cards.length % 4)}; --span2: ${2 - (cards.length % 2)};`}
+      >
+        <p id="alumni-heading" class="alumni-head font-mono upper">{alumni.heading}</p>
+        <ul class="logos">
+          {alumni.companies.map((c) => (
+            <li>
+              <a href={c.linkedin || c.website} target="_blank" rel="noopener noreferrer" title={c.name} class:list={["co", c.mark && "co--mark", !c.logo && "co--word"]}>
+                {c.logo && <img src={c.logo} alt={c.mark ? "" : c.name} loading="lazy" />}
+                {(c.mark || !c.logo) && <span class="co-name">{c.name}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </aside>
     </div>
   </div>
 </section>
@@ -170,6 +190,74 @@ const cards = team.map((m) => ({
     flex-direction: column;
   }
   .card:hover { background: var(--paper-2); }
+
+  /* Alumni placement: a logo cloud in the empty end of the team grid. */
+  .alumni {
+    grid-column: span var(--span4, 4);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 22px;
+    padding: 28px 28px 32px;
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    background: var(--paper);
+  }
+  /* One line, as large as the panel allows: sized against the panel's own
+     width (container query units), capped at 16px. */
+  .alumni { container-type: inline-size; }
+  .alumni-head {
+    margin: 0;
+    white-space: nowrap;
+    font-size: min(16px, 2.35cqi);
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+    color: var(--ink-2);
+  }
+  /* 3 × 3 grid of logos, each centred in its cell. */
+  .logos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 30px 24px;
+  }
+  .co { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); }
+  /* Every logo rendered as a single-colour silhouette, inverted for dark. */
+  .co img {
+    display: block;
+    height: 40px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    filter: brightness(0);
+    opacity: 0.85;
+    transition: opacity var(--dur-fast) ease;
+  }
+  .co--mark img { height: 32px; }
+  .co-name { font-weight: 700; font-size: 22px; letter-spacing: -0.02em; line-height: 1; }
+  .co--word .co-name { font-size: 25px; }
+  .co:hover img, .co:focus-visible img { opacity: 1; }
+  /* Rhythm: a hop travels across the logos on the beat (GameFX), and every
+     third one bobs gently on its own phase. */
+  .logos li { display: flex; justify-content: center; min-width: 0; }
+  .co { max-width: 100%; }
+  .logos li:nth-child(3n + 1) .co { animation: co-bob 3.2s ease-in-out infinite; }
+  .logos li:nth-child(6n + 4) .co { animation-delay: -1.6s; }
+  @keyframes co-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .logos li .co { animation: none; }
+  }
+  .co:hover .co-name { color: var(--accent); }
+  :global([data-theme="dark"]) .co img { filter: brightness(0) invert(1); }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .co img { filter: brightness(0) invert(1); }
+  }
 
   .card-top {
     padding: 10px 14px;
@@ -256,9 +344,16 @@ const cards = team.map((m) => ({
 
   @media (max-width: 1024px) {
     .grid { grid-template-columns: repeat(2, 1fr); }
+    .alumni { grid-column: span var(--span2, 2); }
   }
   @media (max-width: 560px) {
     .grid { grid-template-columns: 1fr; }
+    .alumni { grid-column: span 1; }
+    .logos { gap: 22px 14px; }
+    .co img { height: 26px; }
+    .co--mark img { height: 22px; }
+    .co-name { font-size: 16px; }
+    .co--word .co-name { font-size: 17px; }
     .card-info .nm { font-size: 18px; }
   }
 </style>

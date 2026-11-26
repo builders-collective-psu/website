@@ -1,0 +1,55 @@
+---
+import SectionHeader from "./ui/SectionHeader.astro";
+import { getPosts, postDate } from "@lib/blog";
+
+/** Latest posts on the homepage. Renders nothing until there is a post. */
+const posts = (await getPosts()).slice(0, 3);
+---
+
+{
+  posts.length > 0 && (
+    <section class="sec" id="blog" aria-labelledby="blog-heading">
+      <div class="wrap">
+        <SectionHeader title="Blog" meta='<a href="/blog">All posts →</a>' id="blog-heading" />
+        <div class="posts">
+          {posts.map((post) => (
+            <article class="post">
+              <a href={`/blog/${post.slug}`} class="post-link">
+                <time class="font-mono upper" datetime={post.data.date.toISOString().slice(0, 10)}>
+                  {postDate(post.data.date)}
+                </time>
+                <h3>{post.data.title}</h3>
+                <p>{post.data.description}</p>
+                <span class="read font-mono upper">Read →</span>
+              </a>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .sec { padding: 72px 0; border-bottom: 1.5px solid var(--ink); }
+  .posts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1.5px solid var(--ink);
+  }
+  .post { border-right: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); }
+  .post:nth-child(3n) { border-right: 0; }
+  .post-link { display: grid; gap: 10px; height: 100%; padding: 24px 24px 24px 0; }
+  .post:not(:first-child) .post-link { padding-left: 24px; }
+  .post time { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+  .post h3 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+  .post p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
+  .read { margin-top: 6px; font-size: 11px; letter-spacing: 0.14em; color: var(--accent); }
+  :global(.sec-meta a) { border-bottom: 1px solid currentColor; }
+
+  @media (max-width: 860px) {
+    .posts { grid-template-columns: 1fr; }
+    .post { border-right: 0; }
+    .post:not(:first-child) .post-link { padding-left: 0; }
+  }
+</style>

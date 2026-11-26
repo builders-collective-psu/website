@@ -67,12 +67,16 @@ export interface Recap {
   eventId: string;
   eventName: string;
   eventSlug: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
   teamId: string | null;
   teamName: string | null;
   won: boolean | null;
   placement: string | null;
   prizeName: string | null;
   prizeCents: number | null;
+  /** "per_member": prizeCents is each member's prize; "team_total": the team's. */
+  prizeSplit?: "per_member" | "team_total" | null;
   track: string | null;
   prizePhotoUrl: string | null;
   eventPhotoUrls: string[] | null;
@@ -101,8 +105,13 @@ export function dedupeByTeam(recaps: Recap[]): Recap[] {
   });
 }
 
-/** Shared cache policy: cheap for visitors, still fresh within a few minutes. */
-export const CACHE_HEADER = "public, s-maxage=300, stale-while-revalidate=600";
+/**
+ * Shared cache policy. The CDN keeps a response for 10 minutes, then serves it
+ * while refreshing in the background (up to a day). Each endpoint reaches
+ * bunker, and its database, a handful of times an hour however many people
+ * visit; bunker's responses are small now, so that is cheap.
+ */
+export const CACHE_HEADER = "public, s-maxage=600, stale-while-revalidate=86400";
 
 export function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {

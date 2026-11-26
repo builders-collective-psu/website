@@ -44,7 +44,8 @@ const year = new Date().getFullYear();
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 28px 0;
+    /* Block padding only: .wrap owns the side gutters. */
+    padding-block: 28px;
     font-size: 12px;
     color: var(--muted);
     gap: 16px;

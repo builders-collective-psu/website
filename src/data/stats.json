@@ -1,10 +1,10 @@
 {
-  "wins": 34,
-  "hackathons": 22,
-  "shipped": 71,
+  "wins": 114,
+  "hackathons": 68,
+  "shipped": 119,
   "nextEvent": {
     "name": "HackMIT",
     "daysOut": 18
   },
-  "members": 24
+  "members": 26
 }

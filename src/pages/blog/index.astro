@@ -1,0 +1,61 @@
+---
+import Base from "@layouts/Base.astro";
+import SectionHeader from "@components/ui/SectionHeader.astro";
+import { getPosts, postDate } from "@lib/blog";
+
+const posts = await getPosts();
+---
+
+<Base title="Blog — Builders Collective" description="Notes from Builders Collective at Penn State.">
+  <section class="sec" aria-labelledby="blog-heading">
+    <div class="wrap">
+      <SectionHeader title="Blog" id="blog-heading" />
+      {
+        posts.length ? (
+          <ol class="list">
+            {posts.map((post) => (
+              <li>
+                <a href={`/blog/${post.slug}`} class="row">
+                  <time class="font-mono upper" datetime={post.data.date.toISOString().slice(0, 10)}>
+                    {postDate(post.data.date)}
+                  </time>
+                  <span class="text">
+                    <span class="title">{post.data.title}</span>
+                    <span class="desc">{post.data.description}</span>
+                  </span>
+                  <span class="arrow font-mono" aria-hidden="true">→</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p class="empty font-mono upper">No posts yet.</p>
+        )
+      }
+    </div>
+  </section>
+</Base>
+
+<style>
+  .sec { padding: 56px 0 96px; }
+  .list { list-style: none; margin: 0; padding: 0; border-top: 1.5px solid var(--ink); }
+  .row {
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    gap: 24px;
+    align-items: baseline;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .row time { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+  .text { display: grid; gap: 6px; }
+  .title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+  .desc { font-size: 15px; color: var(--ink-2); }
+  .arrow { color: var(--accent); }
+  .row:hover .title { color: var(--accent); }
+  .empty { color: var(--muted); font-size: 12px; letter-spacing: 0.12em; }
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 1fr; gap: 8px; }
+    .arrow { display: none; }
+  }
+</style>

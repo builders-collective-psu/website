@@ -1,0 +1,867 @@
+---
+/**
+ * Site-wide game feel: soft synthesized UI sounds and springy interactions.
+ *
+ * Sounds are generated with Web Audio (no files) and kept quiet. Browsers only
+ * allow audio after a user gesture, so nothing plays until the first click or
+ * key press. The speaker button in the masthead mutes them; the choice is
+ * remembered per browser. Other components play sounds through window.__sfx.
+ */
+---
+
+<div class="fx-reticle" data-fx-reticle aria-hidden="true">
+  <span class="fx-c fx-tl"></span><span class="fx-c fx-tr"></span>
+  <span class="fx-c fx-bl"></span><span class="fx-c fx-br"></span>
+</div>
+
+<script is:inline>
+  (function () {
+    const KEY = "bc-sfx";
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let muted = false;
+    try {
+      muted = localStorage.getItem(KEY) === "off";
+    } catch (e) {}
+
+    // Volume: six discrete steps, 0 = silent.
+    const LEVELS = [0, 0.15, 0.3, 0.5, 0.75, 1];
+    let volume = 3;
+    try {
+      const raw = localStorage.getItem("bc-vol");
+      const saved = raw === null ? NaN : Number(raw);
+      if (Number.isInteger(saved) && saved >= 0 && saved < LEVELS.length) volume = saved;
+    } catch (e) {}
+
+    let ctx = null;
+    let meter = null;
+    let master = null;
+    // No sound at all on phones and tablets (touch-only or narrow screens):
+    // no audio engine is ever created, so nothing can play.
+    const NO_SOUND =
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches ||
+      window.matchMedia("(max-width: 720px)").matches;
+    window.__soundAvailable = !NO_SOUND;
+    if (NO_SOUND) document.documentElement.classList.add("no-sound");
+
+    const ready = () => {
+      if (NO_SOUND) return null;
+      if (ctx) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = LEVELS[volume];
+      // A limiter after the master so louder levels never clip.
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -10;
+      limiter.knee.value = 6;
+      limiter.ratio.value = 12;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.15;
+      master.connect(limiter).connect(ctx.destination);
+      meter = ctx.createAnalyser();
+      meter.fftSize = 2048;
+      limiter.connect(meter);
+      return ctx;
+    };
+    let unlocked = false;
+    const unlock = () => {
+      if (NO_SOUND) return;
+      unlocked = true;
+      const c = ready();
+      if (c && c.state === "suspended") c.resume();
+    };
+    window.addEventListener("pointerdown", unlock, { once: false, passive: true });
+    window.addEventListener("keydown", unlock, { passive: true });
+
+    // One short enveloped tone. Volumes stay well under 0.1.
+    function blip(freq, { type = "sine", dur = 0.06, vol = 0.04, slide = 0 } = {}) {
+      if (muted || !unlocked || !ready() || document.hidden) return;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      if (slide) osc.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(gain).connect(master);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    }
+
+    let lastHover = 0;
+    window.__sfx = {
+      // Bigger things sound lower.
+      hover(size = 40) {
+        const now = performance.now();
+        if (now - lastHover < 60) return;
+        lastHover = now;
+        const pitch = Math.max(520, Math.min(1500, 1500 - Math.sqrt(size) * 22));
+        blip(pitch, { dur: 0.045, vol: 0.07 });
+      },
+      click() {
+        blip(520, { type: "triangle", dur: 0.1, vol: 0.16, slide: 1.6 });
+      },
+      beat(down) {
+        blip(down ? 330 : 660, { type: "triangle", dur: down ? 0.08 : 0.05, vol: down ? 0.1 : 0.06 });
+      },
+      // Impact: a short filtered noise hit over a low thud.
+      clash() {
+        if (muted || !unlocked || !ready() || document.hidden) return;
+        const t = ctx.currentTime;
+        const len = Math.floor(ctx.sampleRate * 0.12);
+        const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const band = ctx.createBiquadFilter();
+        band.type = "bandpass";
+        band.frequency.value = 1800;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.2;
+        noise.connect(band).connect(gain).connect(master);
+        noise.start(t);
+        blip(180, { type: "triangle", dur: 0.18, vol: 0.2, slide: 0.5 });
+      },
+      select() {
+        blip(990, { dur: 0.06, vol: 0.08, slide: 1.25 });
+      },
+    };
+
+    // ---------- Beat clock ----------
+    // One shared beat for the whole page (640 ms, about 94 bpm). Components
+    // listen for "fx:beat" with { n, down }. When audio is running the music
+    // is scheduled on the same grid, slightly ahead, so they stay in step.
+    const BEAT = 640;
+    let beatIndex = 0;
+    let nextBeat = performance.now() + BEAT;
+    window.__beatPeriod = BEAT;
+
+    // Browsers throttle timers in background tabs and during long tasks, so
+    // the clock can wake up far behind. It never replays what it missed: late
+    // beats and notes are dropped rather than fired in a burst, and anything
+    // still pending when the tab is hidden is cancelled.
+    const LATE = 150; // ms past its time after which a beat or note is stale
+    let epoch = 0;
+    function onTime(delay, fire) {
+      const due = performance.now() + delay;
+      const mine = epoch;
+      setTimeout(() => {
+        if (mine !== epoch || document.hidden || performance.now() - due > LATE) return;
+        fire();
+      }, delay);
+    }
+    document.addEventListener("visibilitychange", () => {
+      epoch++;
+      // Pick the grid back up from now: the next beat lands one period out.
+      if (!document.hidden) nextBeat = performance.now() + BEAT;
+    });
+
+    // ---------- Jazz loop ----------
+    // ii–V–I–VI in C, one chord a bar: walking bass, a brushed ride with a
+    // swung skip, and soft comping stabs. All synthesized, all quiet.
+    const MUSIC_KEY = "bc-music";
+    let musicOn = true;
+    try {
+      musicOn = localStorage.getItem(MUSIC_KEY) !== "off";
+    } catch (e) {}
+    let musicBus = null;
+    const bus = () => {
+      if (!musicBus && ready()) {
+        musicBus = ctx.createGain();
+        musicBus.gain.value = 0.85;
+        musicBus.connect(master);
+      }
+      return musicBus;
+    };
+    const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+    const CHORDS = [
+      { root: 38, tones: [0, 3, 7, 10], voicing: [65, 72, 76] }, // Dm7:  F C E
+      { root: 43, tones: [0, 4, 7, 10], voicing: [65, 71, 76] }, // G7:   F B E
+      { root: 36, tones: [0, 4, 7, 11], voicing: [64, 71, 74] }, // Cmaj7: E B D
+      { root: 45, tones: [0, 4, 7, 10], voicing: [61, 67, 71] }, // A7:   C# G B
+    ];
+    let noiseBuffer = null;
+    const noise = () => {
+      if (!noiseBuffer) {
+        noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+        const d = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      return noiseBuffer;
+    };
+    function tone(at, freq, { type = "sine", dur = 0.3, vol = 0.03, cutoff = 0 } = {}) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, at);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      let out = osc.connect(gain);
+      if (cutoff) {
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = cutoff;
+        out = out.connect(lp);
+      }
+      out.connect(bus());
+      osc.start(at);
+      osc.stop(at + dur + 0.05);
+    }
+    function brush(at, vol, dur = 0.09, freq = 7000) {
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = freq;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(vol, at);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      src.connect(hp).connect(gain).connect(bus());
+      src.start(at);
+      src.stop(at + dur + 0.02);
+    }
+    // Announce each pitched note at the moment it sounds ("fx:note"), so the
+    // page can draw one note per note.
+    function announce(at, midi, kind) {
+      const delay = Math.max(0, (at - ctx.currentTime) * 1000);
+      onTime(delay, () => window.dispatchEvent(new CustomEvent("fx:note", { detail: { midi, kind } })));
+    }
+
+    function playBeat(n, at) {
+      const beatSec = BEAT / 1000;
+      const bar = Math.floor(n / 4) % CHORDS.length;
+      const pos = n % 4;
+      const chord = CHORDS[bar];
+      const next = CHORDS[(bar + 1) % CHORDS.length];
+      // Walking bass: root, chord tone, fifth, then a half-step approach.
+      const bass = [
+        chord.root,
+        chord.root + chord.tones[1 + ((n >> 2) % 2)],
+        chord.root + 7,
+        next.root + (n % 8 < 4 ? -1 : 1),
+      ][pos];
+      // Up an octave from a real upright so laptop speakers can play it.
+      tone(at, hz(bass + 12), { type: "triangle", dur: beatSec * 0.95, vol: 0.24, cutoff: 1600 });
+      announce(at, bass + 12, "bass");
+      // Ride on every beat, swung skip note after 2 and 4, foot hat on 2 and 4.
+      brush(at, 0.07);
+      if (pos === 1 || pos === 3) {
+        brush(at + beatSec * (2 / 3), 0.045);
+        brush(at, 0.05, 0.05, 4000);
+      }
+      // Comping: a soft stab on the "and" of 2, sometimes on 4.
+      const stab = pos === 1 ? at + beatSec * (2 / 3) : pos === 3 && bar % 2 === 0 ? at : null;
+      if (stab !== null) {
+        chord.voicing.forEach((m, i) =>
+          tone(stab + i * 0.006, hz(m), { type: "triangle", dur: 0.42, vol: 0.06, cutoff: 2200 }),
+        );
+        // A chord is heard as one hit, so it gets one note (its top voice).
+        announce(stab, chord.voicing[chord.voicing.length - 1], "chord");
+      }
+    }
+
+    const musicPlaying = () => musicOn && !muted && unlocked && !!ctx && !document.hidden;
+
+    window.__music = {
+      // True only while the loop is actually sounding (audio unlocked, not muted).
+      get playing() {
+        return musicPlaying() && volume > 0;
+      },
+      get on() {
+        return musicOn && !muted;
+      },
+      toggle() {
+        musicOn = !musicOn;
+        try {
+          localStorage.setItem(MUSIC_KEY, musicOn ? "on" : "off");
+        } catch (e) {}
+        window.dispatchEvent(new CustomEvent("fx:music", { detail: window.__music.on }));
+        return musicOn;
+      },
+    };
+
+    let lastBeatAt = 0;
+    setInterval(() => {
+      const now = performance.now();
+      // Woke up more than a beat late: skip the missed beats (keeping the
+      // count, so bars stay in phase) instead of playing them all at once.
+      if (now - nextBeat > LATE) {
+        const missed = Math.ceil((now - nextBeat) / BEAT);
+        beatIndex += missed;
+        nextBeat += missed * BEAT;
+      }
+      while (nextBeat < now + 120) {
+        const n = beatIndex++;
+        const at = nextBeat;
+        if (musicPlaying()) playBeat(n, ctx.currentTime + Math.max(0, (at - now) / 1000));
+        onTime(Math.max(0, at - now), () => {
+          // Never two beats closer than half a period, whatever the timers did.
+          const t = performance.now();
+          if (t - lastBeatAt < BEAT / 2) return;
+          lastBeatAt = t;
+          window.dispatchEvent(new CustomEvent("fx:beat", { detail: { n, down: n % 4 === 0 } }));
+        });
+        nextBeat += BEAT;
+      }
+    }, 25);
+
+    // "Awake" = sound is actually on: the visitor has clicked or pressed a key
+    // (so the browser allows audio), it is not muted, and volume is above 0.
+    window.__soundAwake = () => unlocked && !muted && volume > 0;
+    // Has the visitor clicked or pressed a key yet (so the browser lets audio play)?
+    window.__soundUnlocked = () => unlocked;
+
+    // Read-only snapshot of the audio engine, for debugging in the console.
+    window.__audioState = () => ({
+      context: ctx ? ctx.state : "not created",
+      unlocked,
+      muted,
+      volume,
+      gain: master ? master.gain.value : null,
+      music: musicOn,
+      // Loudest sample in the last ~40 ms, in dBFS.
+      peakDb: (() => {
+        if (!meter) return null;
+        const data = new Float32Array(meter.fftSize);
+        meter.getFloatTimeDomainData(data);
+        const peak = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+        return peak ? Math.round(20 * Math.log10(peak)) : -Infinity;
+      })(),
+    });
+
+    // Toggle
+    const toggle = document.querySelector("[data-sfx-toggle]");
+    const paint = () => {
+      if (!toggle) return;
+      toggle.setAttribute("aria-pressed", String(!muted));
+      toggle.setAttribute("title", muted ? "Sound off" : "Sound on");
+    };
+    paint();
+    toggle?.addEventListener("click", () => {
+      muted = !muted;
+      try {
+        localStorage.setItem(KEY, muted ? "off" : "on");
+      } catch (e) {}
+      paint();
+      if (!muted) window.__sfx.click();
+      window.dispatchEvent(new CustomEvent("fx:music", { detail: window.__music.on }));
+    });
+
+    const slider = document.querySelector("[data-sfx-volume]");
+    if (slider) {
+      slider.value = String(volume);
+      slider.addEventListener("input", () => {
+        volume = Number(slider.value);
+        try {
+          localStorage.setItem("bc-vol", String(volume));
+        } catch (e) {}
+        if (master) master.gain.setTargetAtTime(LEVELS[volume], ctx.currentTime, 0.02);
+        // Preview each notch at its new level.
+        window.__sfx.select();
+      });
+    }
+
+    // Interactive things get a hover tick and a click blip.
+    const SEL = "a, button, summary, main article, [data-sfx]";
+    document.addEventListener(
+      "pointerover",
+      (event) => {
+        const target = event.target instanceof Element ? event.target.closest(SEL) : null;
+        if (!target || target.contains(event.relatedTarget)) return;
+        const box = target.getBoundingClientRect();
+        window.__sfx.hover(Math.min(box.width, box.height));
+      },
+      { passive: true },
+    );
+    document.addEventListener(
+      "click",
+      (event) => {
+        const target = event.target instanceof Element ? event.target.closest(SEL) : null;
+        if (target && target !== toggle) window.__sfx.click();
+      },
+      { passive: true },
+    );
+
+    // Game-menu brackets: spring to whatever interactive thing is under the
+    // pointer. Fixed-position, so it follows scrolling by re-measuring.
+    const reticle = document.querySelector("[data-fx-reticle]");
+    const TARGETS = "a, button, summary, main article, [data-sfx]";
+    let aimed = null;
+    let raf = 0;
+    const aim = () => {
+      if (!reticle || !aimed || !aimed.isConnected) return;
+      const r = aimed.getBoundingClientRect();
+      // Corners grow with the target: small links get tight brackets, cards
+      // get big ones.
+      const corner = Math.max(10, Math.min(30, Math.min(r.width, r.height) * 0.22));
+      reticle.style.setProperty("--cs", `${corner}px`);
+      reticle.style.setProperty("--bw", `${corner > 20 ? 4 : 3}px`);
+      reticle.style.setProperty("--d", `${Math.round(corner * 0.25)}px`);
+      const pad = Math.round(corner * 0.45);
+      reticle.style.width = `${r.width + pad * 2}px`;
+      reticle.style.height = `${r.height + pad * 2}px`;
+      reticle.style.transform = `translate(${r.left - pad}px, ${r.top - pad}px)`;
+    };
+    // Spring the brackets onto an element (hover or keyboard focus).
+    const aimAt = (el) => {
+      if (!reticle) return;
+      if (!el) {
+        aimed = null;
+        reticle.classList.remove("is-on");
+        return;
+      }
+      if (el === aimed) return;
+      const first = !reticle.classList.contains("is-on");
+      aimed = el;
+      if (first) reticle.classList.add("no-move");
+      aim();
+      if (first) {
+        void reticle.offsetWidth;
+        reticle.classList.remove("no-move");
+      }
+      reticle.classList.add("is-on");
+      // Re-measure once hover lifts and focus scrolling have settled.
+      setTimeout(aim, 240);
+      setTimeout(aim, 520);
+    };
+    // The hero tally and the globe have their own selection.
+    const ownSelection = (el) => !!el.closest("[data-tally-marks], [data-globe]");
+
+    if (reticle && window.matchMedia("(pointer: fine)").matches) {
+      document.addEventListener(
+        "pointerover",
+        (event) => {
+          const el = event.target instanceof Element ? event.target.closest(TARGETS) : null;
+          if (!el) {
+            // Keep the brackets on a keyboard-focused element.
+            const focused = document.activeElement;
+            aimAt(focused && focused !== document.body && focused.matches(":focus-visible") ? focused : null);
+            return;
+          }
+          if (ownSelection(el)) return;
+          aimAt(el);
+        },
+        { passive: true },
+      );
+      document.addEventListener("pointerleave", () => aimAt(null));
+    }
+    if (reticle) {
+      // Capture phase, so scrolling inside a panel (like the events list)
+      // moves the brackets too, not just scrolling the page.
+      document.addEventListener(
+        "scroll",
+        () => {
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(aim);
+        },
+        { passive: true, capture: true },
+      );
+
+      // Keyboard focus gets the same brackets as hover, in place of the
+      // browser's focus ring (only once this script is running).
+      document.documentElement.classList.add("fx-ready");
+      document.addEventListener("focusin", (event) => {
+        const el = event.target;
+        if (!(el instanceof Element) || !el.matches(":focus-visible") || ownSelection(el)) return;
+        aimAt(el);
+        window.__sfx.hover(Math.min(el.getBoundingClientRect().width, el.getBoundingClientRect().height));
+      });
+      document.addEventListener("focusout", (event) => {
+        if (event.target === aimed && !event.relatedTarget) aimAt(null);
+      });
+    }
+
+    // ---------- Keyboard: arrows, WASD and hjkl move focus spatially ----------
+    const FOCUSABLE =
+      'a[href], button:not([disabled]), summary, input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+    const KEYS = {
+      ArrowLeft: "left", a: "left", h: "left",
+      ArrowRight: "right", d: "right", l: "right",
+      ArrowUp: "up", w: "up", k: "up",
+      ArrowDown: "down", s: "down", j: "down",
+    };
+    // Hidden by a scrolling panel it sits in (like cards scrolled out of the
+    // events list)? Then it is not a place focus can jump to.
+    const clippedByPanel = (el, r) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const overflow = getComputedStyle(p).overflowY;
+        if (overflow === "auto" || overflow === "scroll" || overflow === "hidden") {
+          const box = p.getBoundingClientRect();
+          if (r.bottom <= box.top || r.top >= box.bottom || r.right <= box.left || r.left >= box.right) return true;
+        }
+      }
+      return false;
+    };
+    const visibleFocusables = () =>
+      [...document.querySelectorAll(FOCUSABLE)].filter((el) => {
+        if (el.closest("[hidden], [inert]")) return false;
+        const r = el.getBoundingClientRect();
+        // Ignore the visually hidden (1px) skip link and other zero-size things.
+        if (r.width < 4 || r.height < 4 || getComputedStyle(el).visibility === "hidden") return false;
+        return !clippedByPanel(el, r);
+      });
+
+    // Nearest element in that direction: distance along the direction, with
+    // sideways drift weighted heavier so it prefers things in line.
+    function nextInDirection(from, dir) {
+      const a = from.getBoundingClientRect();
+      const ax = a.left + a.width / 2;
+      const ay = a.top + a.height / 2;
+      let best = null;
+      let bestScore = Infinity;
+      const fromHeader = !!from.closest(".masthead, [data-event-bar]");
+      for (const el of visibleFocusables()) {
+        if (el === from || el.contains(from) || from.contains(el)) continue;
+        const b = el.getBoundingClientRect();
+        const bx = b.left + b.width / 2;
+        const by = b.top + b.height / 2;
+        let along;
+        let across;
+        // Must actually lie that way: allow only a little overlap.
+        const slackX = Math.min(a.width, b.width) * 0.3;
+        const slackY = Math.min(a.height, b.height) * 0.3;
+        if (dir === "right") { along = b.left - a.right; across = by - ay; if (along < -slackX) continue; }
+        if (dir === "left") { along = a.left - b.right; across = by - ay; if (along < -slackX) continue; }
+        if (dir === "down") { along = b.top - a.bottom; across = bx - ax; if (along < -slackY) continue; }
+        if (dir === "up") { along = a.top - b.bottom; across = bx - ax; if (along < -slackY) continue; }
+        // Prefer things inside a 45° cone ahead, then the nearest.
+        const outsideCone = Math.abs(across) > Math.max(0, along) + 40;
+        // The sticky header is always "above" on screen; only go there from
+        // inside it, or when nothing else lies that way.
+        const intoHeader = !fromHeader && !!el.closest(".masthead, [data-event-bar]");
+        const score =
+          Math.max(0, along) + Math.abs(across) * 1.5 + (outsideCone ? 1500 : 0) + (intoHeader ? 5000 : 0);
+        if (score < bestScore) {
+          bestScore = score;
+          best = el;
+        }
+      }
+      return best;
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      const dir = KEYS[event.key] || KEYS[event.key.toLowerCase && event.key.toLowerCase()];
+      if (!dir) return;
+      const active = document.activeElement;
+      // Leave typing, selects and sliders alone (a slider keeps its arrows;
+      // letters still move focus off it).
+      if (active && (active.isContentEditable || /^(textarea|select)$/i.test(active.tagName))) return;
+      if (active && active.tagName === "INPUT") {
+        const type = (active.getAttribute("type") || "text").toLowerCase();
+        if (type !== "range" && type !== "checkbox" && type !== "radio" && type !== "button") return;
+        if (type === "range" && event.key.startsWith("Arrow")) return;
+      }
+      if (document.querySelector("dialog[open]")) return;
+
+      let target;
+      if (!active || active === document.body) {
+        // Nothing focused yet: start from the first control on screen.
+        target = visibleFocusables().find((el) => {
+          const r = el.getBoundingClientRect();
+          return r.top >= 0 && r.bottom <= window.innerHeight;
+        });
+      } else {
+        target = nextInDirection(active, dir);
+      }
+      if (!target) return;
+      event.preventDefault();
+      target.focus({ preventScroll: true, focusVisible: true });
+      const r = target.getBoundingClientRect();
+      if (r.top < 90 || r.bottom > window.innerHeight - 20) {
+        target.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+      }
+    });
+
+    // Section titles: slam in from alternating sides the first time they are
+    // seen (like the hero headline), then kick on every downbeat while on screen.
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
+      const titles = [...document.querySelectorAll("main .sec-title")];
+      const visible = new Set();
+      const titleIO = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const el = entry.target;
+            if (entry.isIntersecting) {
+              visible.add(el);
+              if (!el.dataset.slammed) {
+                el.dataset.slammed = "";
+                el.classList.add(titles.indexOf(el) % 2 ? "fx-slam-r" : "fx-slam-l");
+                setTimeout(() => window.__sfx.clash(), 470);
+              }
+            } else visible.delete(el);
+          });
+        },
+        { threshold: 0.4 },
+      );
+      titles.forEach((el) => titleIO.observe(el));
+      window.addEventListener("fx:beat", (event) => {
+        if (!event.detail.down) return;
+        visible.forEach((el) => {
+          el.classList.remove("fx-kick");
+          void el.offsetWidth;
+          el.classList.add("fx-kick");
+        });
+      });
+    }
+
+    // ---------- Rhythm across the page ----------
+    // Everything below listens to the shared beat and only moves while its
+    // part of the page is on screen.
+    if (!reduced && "IntersectionObserver" in window) {
+      const onScreen = new Set();
+      const io = new IntersectionObserver(
+        (entries) => entries.forEach((e) => (e.isIntersecting ? onScreen.add(e.target) : onScreen.delete(e.target))),
+        { threshold: 0.1 },
+      );
+      const retrigger = (el, cls) => {
+        el.classList.remove(cls);
+        void el.offsetWidth;
+        el.classList.add(cls);
+      };
+      // Wave rows: one item hops per beat, travelling along the row.
+      const WAVES = "#team .grid, #team .logos, #enti .reasons, #enti .tracks, #acknowledgements .people, #acknowledgements .cloud";
+      // Playhead lists: one line lights per beat, top to bottom.
+      const PLAYHEADS = "#enti .courses";
+      // Downbeat punch.
+      const PUNCH = "#apply .btn--solid";
+      const watched = () => {
+        document.querySelectorAll(`${WAVES}, ${PLAYHEADS}, ${PUNCH}`).forEach((el) => {
+          if (el.dataset.fxBeat) return;
+          el.dataset.fxBeat = "";
+          io.observe(el);
+        });
+      };
+      watched();
+      new MutationObserver(watched).observe(document.querySelector("main") || document.body, {
+        childList: true,
+        subtree: true,
+      });
+
+      window.addEventListener("fx:beat", (event) => {
+        const { n, down } = event.detail;
+        // One playhead across every on-screen course list, so a single line lights per beat.
+        const lines = [...onScreen]
+          .filter((el) => el.isConnected && el.matches(PLAYHEADS))
+          .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+          .flatMap((el) => [...el.children]);
+        if (lines.length) retrigger(lines[n % lines.length], "fx-play");
+        onScreen.forEach((el) => {
+          if (!el.isConnected) return onScreen.delete(el);
+          const kids = el.children;
+          if (el.matches(WAVES) && kids.length) retrigger(kids[n % kids.length], "fx-hop");
+          else if (el.matches(PLAYHEADS)) return;
+          else if (el.matches(PUNCH) && down) retrigger(el, "fx-punch");
+        });
+      });
+
+      // Footer equalizer: five bars that jump with each note of the jazz.
+      // Inline, after the copyright line, so the footer layout is unchanged.
+      const foot = document.querySelector("footer .inner > span");
+      if (foot) {
+        const eq = document.createElement("span");
+        eq.className = "fx-eq";
+        eq.setAttribute("aria-hidden", "true");
+        const bars = Array.from({ length: 5 }, () => eq.appendChild(document.createElement("i")));
+        foot.appendChild(eq);
+        window.addEventListener("fx:note", (event) => {
+          const { midi, kind } = event.detail;
+          const lane = kind === "bass" ? (midi % 2) : 2 + (midi % 3);
+          const bar = bars[lane];
+          bar.style.setProperty("--h", `${40 + Math.min(60, Math.max(0, midi - 48) * 2)}%`);
+          retrigger(bar, "fx-hit");
+        });
+      }
+    }
+
+    // Sections and cards spring in the first time they reach the screen.
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("fx-in");
+            io.unobserve(entry.target);
+          });
+        },
+        { threshold: 0.15 },
+      );
+      const watch = () =>
+        document
+          .querySelectorAll("main article, main .track, main .figure")
+          .forEach((el) => {
+            if (el.dataset.fx) return;
+            el.dataset.fx = "";
+            const box = el.getBoundingClientRect();
+            if (box.top < window.innerHeight) return; // already on screen: leave as is
+            el.classList.add("fx-wait");
+            io.observe(el);
+          });
+      watch();
+      // Cards rendered later from the API.
+      new MutationObserver(watch).observe(document.querySelector("main") || document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
+  })();
+</script>
+
+<style is:global>
+  /* With the script running, keyboard focus is shown by the brackets. */
+  .fx-ready :focus-visible { outline: none !important; }
+
+  /* Page-wide hover brackets, same look as the hero tally's selector. */
+  .fx-reticle {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition:
+      transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      height 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 160ms ease;
+  }
+  .fx-reticle.is-on { opacity: 1; }
+  .fx-reticle.no-move { transition: opacity 160ms ease; }
+  .fx-c {
+    position: absolute;
+    width: var(--cs, 14px);
+    height: var(--cs, 14px);
+    border: var(--bw, 3px) solid var(--accent);
+    transition: width 220ms ease, height 220ms ease;
+    animation: fx-breathe 1280ms ease-in-out infinite;
+  }
+  .fx-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; --dx: calc(var(--d, 3px) * -1); --dy: calc(var(--d, 3px) * -1); }
+  .fx-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; --dx: var(--d, 3px); --dy: calc(var(--d, 3px) * -1); }
+  .fx-bl { bottom: 0; left: 0; border-right: 0; border-top: 0; --dx: calc(var(--d, 3px) * -1); --dy: var(--d, 3px); }
+  .fx-br { bottom: 0; right: 0; border-left: 0; border-top: 0; --dx: var(--d, 3px); --dy: var(--d, 3px); }
+
+  /* Section titles slam in like the hero headline, and kick on the downbeat. */
+  .sec-title { will-change: transform; }
+  .sec-title.fx-slam-l { animation: fx-slam-l 760ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .sec-title.fx-slam-r { animation: fx-slam-r 760ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .sec-title.fx-kick { animation: fx-kick 240ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes fx-slam-l {
+    0% { transform: translateX(-110vw); }
+    62% { transform: translateX(0); }
+    72% { transform: translateX(14px) scaleX(0.95); }
+    84% { transform: translateX(-5px); }
+    100% { transform: none; }
+  }
+  @keyframes fx-slam-r {
+    0% { transform: translateX(110vw); }
+    62% { transform: translateX(0); }
+    72% { transform: translateX(-14px) scaleX(0.95); }
+    84% { transform: translateX(5px); }
+    100% { transform: none; }
+  }
+  /* ---------- Rhythm across the page ---------- */
+  .fx-hop { animation: fx-hop 360ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes fx-hop {
+    0% { transform: none; }
+    35% { transform: translateY(-7px); }
+    100% { transform: none; }
+  }
+  #enti .courses > li { position: relative; transition: color 200ms ease; }
+  #enti .courses > li::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    transform: translateY(-50%) scale(0);
+    transition: transform 300ms ease;
+  }
+  #enti .courses > li.fx-play { animation: fx-play 640ms ease-out; }
+  #enti .courses > li.fx-play::before { animation: fx-play-dot 640ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes fx-play { 0% { color: var(--accent); } 100% { color: inherit; } }
+  @keyframes fx-play-dot {
+    0% { transform: translateY(-50%) scale(0); }
+    30% { transform: translateY(-50%) scale(1.3); }
+    100% { transform: translateY(-50%) scale(0); }
+  }
+  .fx-punch { animation: fx-punch 300ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes fx-punch {
+    0% { transform: none; }
+    30% { transform: scale(1.07) rotate(-1deg); }
+    100% { transform: none; }
+  }
+  /* Small mono labels bob gently, each on its own phase. */
+  main .kicker, main .section-divider, main .sec-meta { display: inline-block; animation: fx-bob 3.2s ease-in-out infinite; }
+  main .kicker:nth-of-type(2n), main .sec-meta { animation-delay: -1.1s; }
+  @keyframes fx-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  /* Footer equalizer */
+  .fx-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; margin-left: 12px; vertical-align: middle; }
+  .fx-eq i { width: 3px; height: 15%; background: var(--accent); transition: height 380ms ease-out; }
+  .fx-eq i.fx-hit { height: var(--h, 80%); transition: height 40ms ease-out; animation: fx-eq-fall 420ms 60ms ease-out forwards; }
+  @keyframes fx-eq-fall { to { height: 15%; } }
+
+  @keyframes fx-kick {
+    0% { transform: none; }
+    35% { transform: translateY(-4px) scale(1.012); }
+    100% { transform: none; }
+  }
+  main .sec { overflow-x: clip; }
+  @keyframes fx-breathe {
+    0%, 100% { transform: none; }
+    50% { transform: translate(var(--dx), var(--dy)); }
+  }
+
+  /* Springy buttons: lift on hover, squash on press. */
+  .btn,
+  .sign-in,
+  .trophy-toggle,
+  [data-event-open] {
+    transition:
+      transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      background var(--dur-fast) ease,
+      color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease;
+  }
+  .btn:hover,
+  .sign-in:hover { transform: translateY(-3px); }
+  .btn:active,
+  .sign-in:active,
+  .trophy-toggle:active,
+  [data-event-open]:active { transform: translateY(1px) scale(0.96); transition-duration: 60ms; }
+
+  /* Cards: a little game-menu lift. */
+  main article {
+    transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1), background var(--dur-normal) ease;
+  }
+  main article:hover { transform: translateY(-4px); }
+
+  /* First-sight entrance: drop in with an overshoot. */
+  .fx-wait { opacity: 0; transform: translateY(24px) scale(0.97); }
+  .fx-wait.fx-in {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 280ms ease-out,
+      transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  main article.fx-wait.fx-in:hover { transform: translateY(-4px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fx-reticle { transition: opacity 160ms ease; }
+    .fx-c { animation: none; }
+    .fx-hop, .fx-punch, #enti .courses > li.fx-play, #enti .courses > li.fx-play::before,
+    main .kicker, main .section-divider, main .sec-meta { animation: none; }
+    .sec-title.fx-slam-l, .sec-title.fx-slam-r, .sec-title.fx-kick { animation: none; }
+    .btn, .sign-in, .trophy-toggle, [data-event-open], main article { transition: none; }
+    .btn:hover, .sign-in:hover, main article:hover { transform: none; }
+  }
+</style>

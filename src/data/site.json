@@ -20,6 +20,10 @@
       "href": "#enti"
     },
     {
+      "label": "Blog",
+      "href": "/blog"
+    },
+    {
       "label": "Team",
       "href": "#team"
     },

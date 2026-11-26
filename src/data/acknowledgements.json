@@ -1,0 +1,116 @@
+{
+  "people": [
+    {
+      "name": "Ted Graef",
+      "title": "Director, Engineering Entrepreneurship",
+      "photo": "/headshots/ack/ted-graef.jpg",
+      "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=jtf150"
+    },
+    {
+      "name": "Brad Groznik",
+      "title": "Assistant Teaching Professor, Engineering Entrepreneurship",
+      "photo": "/headshots/ack/brad-groznik.jpg",
+      "url": "https://www.sedi.psu.edu/department/directory-detail-g.aspx?q=btg125"
+    }
+  ],
+  "partners": [
+    {
+      "name": "Penn State Engineering Entrepreneurship",
+      "logo": "/logos/partners/psu-engineering-entrepreneurship.png",
+      "url": "https://eship.engr.psu.edu/",
+      "wide": true
+    },
+    {
+      "name": "Vercel",
+      "logo": "/logos/alumni/vercel.svg",
+      "url": "https://vercel.com/",
+      "mark": true
+    },
+    {
+      "name": "AWS",
+      "logo": "/logos/partners/aws.svg",
+      "url": "https://aws.amazon.com/"
+    },
+    {
+      "name": "MongoDB",
+      "logo": "/logos/partners/mongodb.svg",
+      "url": "https://www.mongodb.com/",
+      "mark": true
+    },
+    {
+      "name": "Transpose Platform"
+    },
+    {
+      "name": "c0mpiled",
+      "logo": "/logos/partners/compiled.svg",
+      "url": "https://www.compiled.sh/",
+      "mark": true
+    },
+    {
+      "name": "Luminal",
+      "logo": "/logos/partners/luminal.svg",
+      "url": "https://luminal.com/",
+      "mark": true
+    },
+    {
+      "name": "AGI, Inc.",
+      "logo": "/logos/alumni/agi.png",
+      "url": "https://www.theagi.company/",
+      "mark": true
+    },
+    {
+      "name": "Bloomerang",
+      "logo": "/logos/alumni/bloomerang.svg",
+      "url": "https://bloomerang.com/"
+    },
+    {
+      "name": "Red Bull",
+      "logo": "/logos/partners/redbull.svg",
+      "url": "https://www.redbull.com/",
+      "mark": true
+    },
+    {
+      "name": "HackPSU",
+      "logo": "/logos/partners/hackpsu.png",
+      "url": "https://hackpsu.org/",
+      "mark": true
+    },
+    {
+      "name": "CCSO",
+      "logo": "/logos/partners/ccso.png",
+      "url": "https://ccso.psu.edu/",
+      "mark": true
+    },
+    {
+      "name": "Connect Happy Valley",
+      "logo": "/logos/partners/connect-happy-valley.png",
+      "url": "https://connecthappyvalley.com/"
+    },
+    {
+      "name": "Nittany AI",
+      "url": "https://nittanyai.psu.edu/"
+    },
+    {
+      "name": "MICS",
+      "logo": "/logos/partners/mics.png",
+      "url": "https://www.instagram.com/micspsu/"
+    },
+    {
+      "name": "co.space",
+      "logo": "/logos/partners/cospace.png",
+      "url": "https://thecospace.com/"
+    },
+    {
+      "name": "Google Developers Club",
+      "logo": "/logos/partners/google-developers.png"
+    },
+    {
+      "name": "Hax Club",
+      "logo": "/logos/partners/hax.png"
+    },
+    {
+      "name": "Open Build",
+      "logo": "/logos/partners/open-build.png"
+    }
+  ]
+}
